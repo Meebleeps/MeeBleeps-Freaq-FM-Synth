@@ -1,0 +1,351 @@
+/*----------------------------------------------------------------------------------------------------------
+ * avSequencerMultiTrack.h
+ * 
+ * Implements a multitrack generative sequencer with multiple generative algorithms, musical scale quantisation,
+ * variable sequence length (up to 16 steps) and multiple parameter-lock (motion-sequencing) channels
+ * 
+ * (C) 2021 Meebleeps
+*-----------------------------------------------------------------------------------------------------------
+*/
+#include <mozzi_rand.h>
+#include <MozziGuts.h>
+
+#include "Arduino.h"
+#include "avSequencerMultiTrack.h"
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::MutatingSequencerMultiTrack()
+ * initialises the sequencer
+ *----------------------------------------------------------------------------------------------------------
+ */
+MutatingSequencerMultiTrack::MutatingSequencerMultiTrack()
+{
+  // all other settings 
+  tonicNote = 45; //A3
+
+  for (uint8_t i=0; i<MAX_SEQUENCER_TRACKS; i++) 
+  {
+    currentTrackStep[i]    = 0;
+    trackSequenceLength[i] = 16;
+    currentTrackNote[i]    = tonicNote;
+  }
+
+  // setup different defaults for this synth due to the "busy" nature of having 2 tracks 
+  bpm             = 60;
+  noteProbability = 30;
+}
+
+/*---------------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::update()
+ * overrides MutatingSequencer::update() so that MutatingSequencerMultiTrack::nextStep is called instead of MutatingSequencer::nextStep
+ *---------------------------------------------------------------------------------------------------------------
+ */
+bool MutatingSequencerMultiTrack::update(bool restart)
+{
+  if (MutatingSequencer::update(restart))
+  {
+    nextStep(restart);
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+
+/*---------------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::nextStep()
+ * Overrides nextStep to provide multi-track sequencing
+ *---------------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::nextStep(bool restart)
+{
+  MutatingSequencer::nextStep(restart);
+
+  if (restart)
+  {
+    for (uint8_t i=0; i < MAX_SEQUENCER_TRACKS; i++) currentTrackStep[i] = 0; 
+  }
+  else
+  {
+    for (uint8_t i=0; i < MAX_SEQUENCER_TRACKS; i++) currentTrackStep[i] = ++currentTrackStep[i] % trackSequenceLength[i];
+  }
+
+  //Serial.print(F("MutatingSequencerMultiTrack::nextStep()  step="));
+  //Serial.println(currentTrackStep[0]);
+
+  currentNote = notes[currentTrackStep[0]];
+
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getCurrentNote()
+ * gets the note value for the current step
+ *----------------------------------------------------------------------------------------------------------
+ */
+byte MutatingSequencerMultiTrack::getCurrentNote()
+{
+  return getCurrentNote(0);
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getCurrentNote()
+ * gets the note value for the current step for track n
+ *----------------------------------------------------------------------------------------------------------
+ */
+byte MutatingSequencerMultiTrack::getCurrentNote(byte track)
+{
+  if (!retrigState)
+  {
+    return notes[currentTrackStep[track]];
+  }
+  else
+  {
+    return notes[retrigStep];
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getCurrentStep()
+ * gets  the current playing step
+ *----------------------------------------------------------------------------------------------------------
+ */
+byte MutatingSequencerMultiTrack::getCurrentStep()
+{
+  return getCurrentStep(0);
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getCurrentStep()
+ * gets  the current playing step
+ *----------------------------------------------------------------------------------------------------------
+ */
+byte MutatingSequencerMultiTrack::getCurrentStep(byte track)
+{
+  if(!retrigState)
+  {
+    return currentTrackStep[track];
+  }
+  else
+  {
+    return retrigStep;
+  }
+  
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::setparameterLocks()
+ * records the given value as a parameter lock on the given channel
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::setParameterLock(byte channel, int value)
+{
+  parameterLocks[channel][currentTrackStep[0]] = value;
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getparameterLocks()
+ * returns the parameter lock on the given channel for the current step
+ *----------------------------------------------------------------------------------------------------------
+ */
+int MutatingSequencerMultiTrack::getParameterLock(byte channel)
+{
+  return parameterLocks[channel][currentTrackStep[0]];
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getparameterLocks()
+ * returns the parameter lock on the given channel for the current step
+ *----------------------------------------------------------------------------------------------------------
+ */
+uint16_t MutatingSequencerMultiTrack::getParameterLock(byte channel, byte track, byte step)
+{
+  return parameterLocks[channel][step];
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::clearAllParameterLocks()
+ * clears all parameter locks for the given channel
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::clearAllParameterLocks(byte channel)
+{
+  for (uint8_t i = 0; i < MAX_SEQUENCE_LENGTH; i++)
+  {
+    parameterLocks[channel][i] = 0;
+  }
+}
+
+
+
+/*---------------------------------------------------------------------------------------------------------------
+ * mutateSequence
+ * mutate the current sequence according to the selected mutation algorithm
+ *---------------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::mutateSequence()
+{
+  switch(mutationAlgorithm)
+  {
+    case MUTATE_ALGO_DEFAULT:
+      mutateSequenceDefault();
+      break;
+
+    case MUTATE_ALGO_ARPEGGIATED:
+      mutateSequenceArp();
+      break;
+  }
+}
+
+
+/*---------------------------------------------------------------------------------------------------------------
+ * mutateSequenceDefault
+ * default mutation algorithm
+ *---------------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::mutateSequenceDefault()
+{
+  int seqStep;
+
+  if(rand(100) < mutationProbability)
+  {
+ 
+    seqStep = rand(MAX_SEQUENCE_LENGTH);
+
+    // don't mutate the retrig step if the sequencer is currently retriggering
+    // allows the rest of the sequence to mutate while the retrigged step is held
+    if (!retrigState || seqStep != retrigStep)
+    { 
+      // becuase this is a N track sequencer, divide the noteProbability by N so that total probability over N tracks = noteProbability
+      // for efficency do this calc on the rand(X) side so it's at compile-time
+      if (rand(100 * MAX_SEQUENCER_TRACKS) < noteProbability)
+      {
+        if (rand(100) < tonicProbability) 
+        {
+          notes[seqStep] = tonicNote + (12*rand(octaveSpread));
+        }
+        else
+        {
+                        //root        //scale note                        //octave
+          notes[seqStep] = tonicNote + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
+        }
+
+        // randomise the deviation
+        /*
+        if (rand(100) < noteProbability)
+        {
+          if (rand(100) < noteProbability)
+          {
+            parameterLocks[1][seqStep] = rand(1024);
+          }
+          else
+          {
+            parameterLocks[1][seqStep] = 0;
+          }
+        }
+        */
+      }
+      else
+      {
+        notes[seqStep] = 0;
+      }
+      
+      // mutate parameters
+    }
+  }
+}
+
+
+/*---------------------------------------------------------------------------------------------------------------
+ * mutateSequenceArp
+ * arpegiated mutation algorithm
+ *---------------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::mutateSequenceArp()
+{
+  int8_t startStep;
+  int8_t startOctave;
+  uint8_t startNote;
+
+  int8_t seqStep;
+  uint8_t seqNote;
+  uint8_t stepSize;
+  uint8_t runLength;
+  int8_t runDirection;
+  
+
+  // include the default mutation
+  mutateSequenceDefault();
+
+  if(rand(100) < mutationProbability)
+  {
+    runLength = 3;
+    runDirection = 1;//rand(2) - 1; 
+
+    // put in a run of scale notes starting at a random step on a random scalenote in a random octave
+    startStep   = rand(MAX_SEQUENCE_LENGTH);
+    startNote   = rand(scaleNoteCount);
+    startOctave = rand(octaveSpread);
+    stepSize    = rand(2) + 1;
+
+    if (rand(100) < noteProbability)
+    {
+      Serial.print(F("new arpeggio run: "));
+      for (uint8_t i = 0; i < runLength; i++)
+      {
+        seqStep = (startStep + i) % MAX_SEQUENCE_LENGTH;
+        seqNote = scaleNotes[(startNote + (i*stepSize*runDirection) ) % scaleNoteCount];
+        notes[seqStep] = tonicNote + seqNote + (12*(startOctave + (startNote + i < scaleNoteCount ? 0 : 1)));
+        Serial.print(notes[seqStep]);
+        Serial.print(F(","));
+      }
+      Serial.println();
+  }
+  }
+
+}
+
+
+byte MutatingSequencerMultiTrack::getSequenceLength()
+{
+  return trackSequenceLength[0];  
+}
+
+
+byte MutatingSequencerMultiTrack::getSequenceLength(byte track)
+{
+  return trackSequenceLength[track];  
+}
+
+
+void MutatingSequencerMultiTrack::setSequenceLength(byte newLength)
+{
+  setSequenceLength(0, newLength);
+}
+
+
+void MutatingSequencerMultiTrack::setSequenceLength(byte track, byte newLength)
+{
+  if(newLength > 0 && newLength <= MAX_SEQUENCE_LENGTH && trackSequenceLength[track] != newLength)
+  {
+    trackSequenceLength[track] = newLength;
+    Serial.print(F("sequenceLength="));
+    Serial.println(trackSequenceLength[track]);
+  }
+}
+
+
