@@ -23,7 +23,6 @@
 MutatingSequencerMultiTrack::MutatingSequencerMultiTrack()
 {
   // all other settings 
-  tonicNote = 45; //A3
 
   for (uint8_t i=0; i<MAX_SEQUENCER_TRACKS; i++) 
   {
@@ -47,6 +46,8 @@ bool MutatingSequencerMultiTrack::update(bool restart)
   if (MutatingSequencer::update(restart))
   {
     nextStep(restart);
+    mutateSequence();
+    
     return true;
   }
   else
@@ -74,8 +75,10 @@ void MutatingSequencerMultiTrack::nextStep(bool restart)
     for (uint8_t i=0; i < MAX_SEQUENCER_TRACKS; i++) currentTrackStep[i] = ++currentTrackStep[i] % trackSequenceLength[i];
   }
 
+  #ifndef ENABLE_MIDI_OUTPUT
   //Serial.print(F("MutatingSequencerMultiTrack::nextStep()  step="));
   //Serial.println(currentTrackStep[0]);
+  #endif
 
   currentNote = notes[currentTrackStep[0]];
 
@@ -199,6 +202,7 @@ void MutatingSequencerMultiTrack::clearAllParameterLocks(byte channel)
  */
 void MutatingSequencerMultiTrack::mutateSequence()
 {
+
   switch(mutationAlgorithm)
   {
     case MUTATE_ALGO_DEFAULT:
@@ -208,6 +212,16 @@ void MutatingSequencerMultiTrack::mutateSequence()
     case MUTATE_ALGO_ARPEGGIATED:
       mutateSequenceArp();
       break;
+
+    case MUTATE_ALGO_DRONE:
+      mutateSequenceDrone();
+      break;
+
+    case MUTATE_ALGO_ARP2:
+      mutateSequenceArp2();
+      break;
+
+
   }
 }
 
@@ -230,18 +244,16 @@ void MutatingSequencerMultiTrack::mutateSequenceDefault()
     // allows the rest of the sequence to mutate while the retrigged step is held
     if (!retrigState || seqStep != retrigStep)
     { 
-      // becuase this is a N track sequencer, divide the noteProbability by N so that total probability over N tracks = noteProbability
-      // for efficency do this calc on the rand(X) side so it's at compile-time
-      if (rand(100 * MAX_SEQUENCER_TRACKS) < noteProbability)
+      if (rand(100) < noteProbability)
       {
         if (rand(100) < tonicProbability) 
         {
-          notes[seqStep] = tonicNote + (12*rand(octaveSpread));
+          notes[seqStep] = tonicNote + (12*octave) + (12*rand(octaveSpread));
         }
         else
         {
-                        //root        //scale note                        //octave
-          notes[seqStep] = tonicNote + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
+                        //root        //octave        //scale note                        //octave
+          notes[seqStep] = tonicNote + (12*octave) + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
         }
 
         // randomise the deviation
@@ -299,26 +311,72 @@ void MutatingSequencerMultiTrack::mutateSequenceArp()
     // put in a run of scale notes starting at a random step on a random scalenote in a random octave
     startStep   = rand(MAX_SEQUENCE_LENGTH);
     startNote   = rand(scaleNoteCount);
-    startOctave = rand(octaveSpread);
+    startOctave = octave + rand(octaveSpread);
     stepSize    = rand(2) + 1;
 
     if (rand(100) < noteProbability)
     {
+      #ifndef ENABLE_MIDI_OUTPUT
       Serial.print(F("new arpeggio run: "));
+      #endif
+
       for (uint8_t i = 0; i < runLength; i++)
       {
         seqStep = (startStep + i) % MAX_SEQUENCE_LENGTH;
         seqNote = scaleNotes[(startNote + (i*stepSize*runDirection) ) % scaleNoteCount];
         notes[seqStep] = tonicNote + seqNote + (12*(startOctave + (startNote + i < scaleNoteCount ? 0 : 1)));
+        #ifndef ENABLE_MIDI_OUTPUT
         Serial.print(notes[seqStep]);
         Serial.print(F(","));
+        #endif
       }
+      #ifndef ENABLE_MIDI_OUTPUT
       Serial.println();
-  }
+      #endif  
+    }
   }
 
 }
 
+/*---------------------------------------------------------------------------------------------------------------
+ * mutateSequenceArp2
+ * arpegiated mutation algorithm
+ *---------------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::mutateSequenceArp2()
+{
+  int8_t startStep;
+  int8_t startOctave;
+  uint8_t startNote;
+
+  int8_t seqStep;
+  uint8_t seqNote;
+  uint8_t stepSize;
+  uint8_t runLength;
+  int8_t runDirection;
+
+  for (uint8_t i = 0; i < trackSequenceLength[0]; i++)
+  {
+    notes[i] = tonicNote + (12*octave) + scaleNotes[i % (min(trackSequenceLength[0],scaleNoteCount))];
+  }
+}
+
+
+/*---------------------------------------------------------------------------------------------------------------
+ * mutateSequenceDrone
+ * one tonic note per sequence
+ *---------------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::mutateSequenceDrone()
+{
+
+  notes[0] = tonicNote;
+
+  for (int i=1; i < MAX_SEQUENCE_LENGTH; i++)
+  {
+    notes[i] = 0;
+  }
+}
 
 byte MutatingSequencerMultiTrack::getSequenceLength()
 {
@@ -343,8 +401,10 @@ void MutatingSequencerMultiTrack::setSequenceLength(byte track, byte newLength)
   if(newLength > 0 && newLength <= MAX_SEQUENCE_LENGTH && trackSequenceLength[track] != newLength)
   {
     trackSequenceLength[track] = newLength;
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("sequenceLength="));
     Serial.println(trackSequenceLength[track]);
+    #endif
   }
 }
 

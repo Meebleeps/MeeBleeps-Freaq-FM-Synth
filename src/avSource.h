@@ -7,6 +7,7 @@
 #define avSource_h
 #include "Arduino.h"
 #include "PDResonant.h"
+#include "avMidi.h"
 #include <EventDelay.h>
 #include <MozziGuts.h>
 #include <Oscil.h>
@@ -23,8 +24,6 @@
 #define MAX_FILTER_CUTOFF     240
 #define MAX_FILTER_SHAPE      1023
 #define MAX_FILTER_ENV_ATTACK 4096
-#define MAX_FILTER_ENV_DECAY  4096
-#define MIN_FILTER_ENV_DECAY  40
 #define MAX_SOURCE_PARAMS     9
 
 #define SYNTH_PARAMETER_MOD_AMOUNT            1
@@ -38,7 +37,26 @@
 
 #define SYNTH_PARAMETER_OSC2TUNE          0
 
+#define FM_MODE_EXPONENTIAL 0
+#define FM_MODE_LINEAR_HIGH 1
+#define FM_MODE_LINEAR_LOW  2
+#define FM_MODE_FREE        3
+#define MAX_FM_MODES        4
 
+// increase for wider LFO depth range
+// LFO depth will be multiplied by 2^n using a bitshift
+// 0 value should be optimised out by the compiler
+#define MOD_DEPTH_MULTIPLIER_LFO 0
+
+// increase for wider ENV depth range
+// ENV depth will be multiplied by 2^n using a bitshift
+// 0 value should be optimised out by the compiler
+#define MOD_DEPTH_MULTIPLIER_ENV 0
+
+// this is the shortest decay time that can be audible with the mod envelope with the given CONTROL_RATE
+#define MIN_MODULATION_ENV_TIME 30
+
+//#define SYNTH_MODULATION_UPDATE_DIVIDER 2
 
 class MutatingSource
 {
@@ -84,7 +102,8 @@ class MutatingFM : public MutatingSource
     void  setLFODepth(uint8_t depth);
     void setModulationShape(uint16_t newValue);
 
-
+    void toggleFMMode();
+    uint8_t getFMMode();
   protected:
     
     // for FM oscillator
@@ -97,6 +116,7 @@ class MutatingFM : public MutatingSource
     uint8_t  currentGain;
     uint8_t  masterGain;
     uint8_t lastLFOValue;
+    uint8_t fmMode;
 
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* carrier;
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* modulator;
@@ -107,6 +127,7 @@ class MutatingFM : public MutatingSource
   private:
     uint8_t lastMidiNote;
     unsigned int lastNoteLength;
+    uint8_t updateCount;
 
 
 };

@@ -12,6 +12,7 @@
 #define avSequencer_h
 
 #include "Arduino.h"
+#include "avMidi.h"
 #include <EventDelay.h>
 #include <ADSR.h>
 
@@ -33,7 +34,9 @@
 
 #define MUTATE_ALGO_DEFAULT     0
 #define MUTATE_ALGO_ARPEGGIATED 1
-#define MAX_MUTATE_ALGO_COUNT   2
+#define MUTATE_ALGO_DRONE       2
+#define MUTATE_ALGO_ARP2        3
+#define MAX_MUTATE_ALGO_COUNT   4
 
 #define MUTATE_MAX_OCTAVE_SPREAD 3
 
@@ -78,7 +81,10 @@ class MutatingSequencer
 
     void setTonic(int8_t newTonic);
     int8_t getTonic();
-    
+
+    void setOctave(int8_t newOctave);
+    int8_t getOctave();
+
     void setRetrigger(bool newRetrigState);
 
     void setParameterLock(byte channel, int value);
@@ -145,7 +151,8 @@ class MutatingSequencer
     bool running;
 
     uint8_t currentScaleMode;
-    byte tonicNote;                    
+    byte tonicNote;     
+    byte octave;               
 
     byte bpm;
     byte notes[MAX_SEQUENCE_LENGTH];

@@ -3,15 +3,17 @@
 #include <mozzi_rand.h>
 #include <EventDelay.h>
 
+
 #include "avSource.h"
 #include "avSequencerMultiTrack.h"
+#include "avMidi.h"
 #include "LedMatrix.h"
 #include <avr/pgmspace.h>
 
 // define the pins
 #define PIN_SYNC_IN       8
 #define PIN_SYNC_OUT      2
-#define TIMER_SYNC_PULSE_OUTPUT_MILLIS 10
+#define TIMER_SYNC_PULSE_OUTPUT_MILLIS 15
 
 #define PIN_AUDIO_OUT     9
 #define PIN_BUTTON0       4
@@ -31,25 +33,27 @@
 #define LFO_TRACK_0_DISPLAY_ROW           2
 #define LFO_TRACK_1_DISPLAY_ROW           3
 
-#define MAX_ANALOG_INPUTS               6
+#define MAX_ANALOG_INPUTS               8
 #define MAX_ANALOG_VALUE                1023
 
 #define ANALOG_INPUT_MOD_AMOUNT         0
 #define ANALOG_INPUT_DECAY              1
 #define ANALOG_INPUT_MUTATION           2
-#define ANALOG_INPUT_LFORATE            3
+#define ANALOG_INPUT_LFO                3
 #define ANALOG_INPUT_MOD_RATIO          4
 #define ANALOG_INPUT_STEPCOUNT          5
+#define ANALOG_INPUT_MOD_ENVELOPE1      6
+#define ANALOG_INPUT_MOD_ENVELOPE2      7
 
-#define ANALOG_INPUT_MOVEMENT_THRESHOLD 13
+#define ANALOG_INPUT_MOVEMENT_THRESHOLD 10
 
 // listed in order of left to right.
 #define BUTTON_INPUT_FUNC   0
 #define BUTTON_INPUT_TONIC  3
 #define BUTTON_INPUT_SCALE  2
 #define BUTTON_INPUT_START  1
-#define BUTTON_INPUT_REC    5
-#define BUTTON_INPUT_RETRIG 4
+#define BUTTON_INPUT_REC    4
+#define BUTTON_INPUT_VOICE  5
 #define MAX_OSCILLATOR_MODES 1
 
 #define INTERFACE_MODE_NORMAL 0
@@ -62,8 +66,8 @@
 #define MOTION_RECORD_CLEAR 2
 
 // todo:  decrease INTERFACE_UPDATE_DIVIDER  if controls are externally modulated via CV voltage inputs
-#define INTERFACE_UPDATE_DIVIDER_ANALOG 4
-#define INTERFACE_UPDATE_DIVIDER_DIGITAL 8
+#define INTERFACE_UPDATE_DIVIDER_ANALOG 5
+#define INTERFACE_UPDATE_DIVIDER_DIGITAL 4
 
 const PROGMEM byte BITMAP_MEEBLEEPS[]  = {B00011000,B01111110,B11011011,B11011011,B11011011,B11011011,B11000011,B00000110};
 const PROGMEM byte BITMAP_NUMERALS[8][8]  = {
@@ -85,9 +89,11 @@ const PROGMEM byte BITMAP_ALPHA[7][8]  = {
                                     ,{B00000000,B00000000,B00000111,B11100000,B10000000,B11000000,B10000000,B10000000}
                                     ,{B00000000,B00000111,B00000000,B11100000,B10000000,B10000000,B10100000,B11100000}
                                   };
-const PROGMEM byte BITMAP_ALGORITHMS[2][8]  = {
+const PROGMEM byte BITMAP_ALGORITHMS[4][8]  = {
                                         {B01000001,B10010000,B00000100,B01010000,B01000010,B01001000,B01000001,B01000100}
                                       , {B00100001,B01000010,B00000100,B11101000,B00100000,B11100001,B10000010,B11100100}
+                                      , {B00000000,B01111111,B00000000,B11101111,B00100000,B11101111,B00100000,B11100111}
+                                      , {B00100000,B01010000,B00001000,B10100100,B10100010,B11100001,B00101000,B00100100}
                                       };
 
 const PROGMEM byte BITMAP_VOICES[2][8]  = {
@@ -103,8 +109,8 @@ byte interfaceMode    = INTERFACE_MODE_NORMAL;
 byte controlSynthVoice = 0;
 byte motionRecordMode = MOTION_RECORD_NONE;
 
-int iLastAnalogValue[MAX_ANALOG_INPUTS]    = {0,0,0,0,0,0};
-int iCurrentAnalogValue[MAX_ANALOG_INPUTS] = {0,0,0,0,0,0};
+int iLastAnalogValue[MAX_ANALOG_INPUTS]    = {0,0,0,0,0,0,0,0};
+int iCurrentAnalogValue[MAX_ANALOG_INPUTS] = {0,0,0,0,0,0,0,0};
 
 //byte iCurrentButton[MAX_BUTTON_INPUTS];
 //byte iLastButton[MAX_BUTTON_INPUTS];
@@ -112,6 +118,8 @@ int iCurrentAnalogValue[MAX_ANALOG_INPUTS] = {0,0,0,0,0,0};
 uint8_t bitsLastButton;
 uint8_t bitsCurrentButton;
 uint8_t bitsLastParamLock;
+
+uint32_t lastUpdateMicros;
 
 
 inline uint8_t getLastButtonState(uint8_t buttonIndex)
@@ -176,17 +184,16 @@ byte updateCounter = 0;
 
 
 // MOZZI variables
-#define CONTROL_RATE 128   // reduce this from 256 to save processor to get our extra oscillator
+#define CONTROL_RATE 64   // reduce this from 256 to save processor 
  
 
 MutatingFM          voice0;
 MutatingFM          voice1;
-MutatingFM*         voices[2];  // array to hold the voices to simplfy the code (but does make it less efficient)
-MutatingSequencerMultiTrack sequencer;
+MutatingFM*         voices[2];  // array to hold the voices to simplfy the code (but makes it less efficient)
 LedMatrix           ledDisplay;
 EventDelay          syncOutputTimer;
 EventDelay          settingDisplayTimer;
-bool                settingDisplayIconOn;
+MutatingSequencerMultiTrack sequencer;
 
 
 
@@ -198,12 +205,16 @@ bool                settingDisplayIconOn;
  */
 void setup() 
 {
+  #ifdef ENABLE_MIDI_OUTPUT
+  Serial.begin(31250);
+  #else
   Serial.begin(115200);
   Serial.print(F("\n\n\n\n\n-----------------------------------------------------------------------\n"));
   Serial.print(F("Freaq - Mozzi-based Mutating FM Synth.   Build "));
   Serial.print  (__DATE__);
   Serial.print  (F(" "));
   Serial.println  (__TIME__);
+  #endif
 
   initialisePins();
   initialiseDisplay();
@@ -237,15 +248,14 @@ void initialiseDisplay()
   ledDisplay.initialise();
   ledDisplay.setOrientation(LEDMATRIX_ORIENTATION_0);
   
-  settingDisplayIconOn = false;
   settingDisplayTimer.start(0);
 
+  /*
   // display logo
   for (uint8_t i=10; i< 100; i+=10)
   {
     ledDisplay.clearScreen();
     delay(i);
-    //ledDisplay.displayIcon(BITMAP_MEEBLEEPS);
     displaySettingIcon(BITMAP_MEEBLEEPS);
     delay(i);
   }
@@ -256,13 +266,13 @@ void initialiseDisplay()
 
     delay(20);
   }
-
+  */
   ledDisplay.setIntensity(4);
-  // ledDisplay.displayIcon(BITMAP_MEEBLEEPS);
   displaySettingIcon(BITMAP_MEEBLEEPS);
 
-  
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.println(F("initialiseDisplay() complete"));
+  #endif
 }
 
 
@@ -274,8 +284,9 @@ void initialiseDisplay()
  */
 void initialisePins()
 {
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.println(F("initialisePins()"));
-
+  #endif
 
   pinMode(PIN_SYNC_IN, INPUT);          // sync is pulled down by external pulldown resistor
   pinMode(PIN_SYNC_OUT, OUTPUT);
@@ -292,6 +303,8 @@ void initialisePins()
   pinMode(A3, INPUT);
   pinMode(A4, INPUT);
   pinMode(A5, INPUT); 
+  pinMode(A6, INPUT);
+  pinMode(A7, INPUT); 
 
   // initialise 
   bitsLastButton    = 0;
@@ -343,6 +356,11 @@ void initialiseSequencer()
  */
 void updateControl()
 {
+
+  lastUpdateMicros = micros();
+
+  uint8_t sequenceUpdated = false;
+
   updateCounter++;
 
   // do this every time to ensure sync
@@ -351,6 +369,7 @@ void updateControl()
   // update sequencer returns true if the seqeuncer has moved to next step
   if (updateSequencer())
   {
+    sequenceUpdated = true;
     //only update the display once per sequencer step    
     updateDisplay();
 
@@ -362,40 +381,59 @@ void updateControl()
 
   }
 
-  // check to see if the output sync pulse needs to be pulled low
-  if (syncOutputTimer.ready())
-  {
-    digitalWrite(PIN_SYNC_OUT, LOW);
-  }
+    // check to see if the output sync pulse needs to be pulled low
+    if (syncOutputTimer.ready())
+    {
+      digitalWrite(PIN_SYNC_OUT, LOW);
+    }
 
 
-  // check controls once every INTERFACE_UPDATE_DIVIDER steps for efficiency
-  if(updateCounter % INTERFACE_UPDATE_DIVIDER_DIGITAL == 0)
-  {
-    // check button controls first to ensure interface mode is correctly set
-    updateButtonControls();
-
-  }
-
-  // check controls once every INTERFACE_UPDATE_DIVIDER steps for efficiency
-  if(updateCounter % INTERFACE_UPDATE_DIVIDER_ANALOG == 0)
-  {
-    // now check analog controls
-    updateAnalogControls();
-
-    //update display of LFO modulation at higher rate than rest of display
-    updateLFOModulationDisplay();
+    // check controls once every INTERFACE_UPDATE_DIVIDER steps for efficiency
+    if(updateCounter % INTERFACE_UPDATE_DIVIDER_ANALOG == 0)
+    {
+      // now check analog controls
+      updateAnalogControls();
     
+    }
+
+    // never check both analog and digital controls in the same step
+    else if(updateCounter % INTERFACE_UPDATE_DIVIDER_DIGITAL == 0)
+    {
+      // check button controls first to ensure interface mode is correctly set
+      updateButtonControls();
+
+    }
+  
+
+  if(updateCounter % 2 == 0)
+  {
+    //update display of LFO modulation at higher rate than rest of display
+    //take 270 micros. maybe leave out
+    updateLFOModulationDisplay();
   }
 
-
+  #ifndef ENABLE_MIDI_OUTPUT
+  //Serial.print(micros() - lastUpdateMicros);
+  //Serial.print(F(","));
+  #endif
 
   // now that all controls are updated, update the source.
 
   voices[0]->updateControl();
   voices[1]->updateControl();
 
-
+  #ifndef ENABLE_MIDI_OUTPUT
+  /*
+  Serial.print(micros() - lastUpdateMicros);
+  Serial.print(F(","));
+  Serial.print(updateCounter % INTERFACE_UPDATE_DIVIDER_DIGITAL);
+  Serial.print(F(","));
+  Serial.print(updateCounter % INTERFACE_UPDATE_DIVIDER_ANALOG);
+  Serial.print(F(","));
+  Serial.print(sequenceUpdated);
+  Serial.println();
+  */
+ #endif
 }
 
 
@@ -435,12 +473,23 @@ int updateSequencer()
      
       if (nextNote[i] > 0)
       {
-        getParameterLocks();
+        //todo: reinstate parameter locks
+        //getParameterLocks();
 
         voices[i]->noteOn(nextNote[i], 255, nextNoteLength);
 
       }
     }
+    #ifdef ENABLE_MIDI_OUTPUT
+    //midiNoteOn(1,nextNote[0],127);
+    if (nextNote[0])
+    {
+      Serial.write(0x90);
+      Serial.write(nextNote[0]-24);
+      Serial.write(0x45);
+    }
+    #endif
+
 
     return true;
   }
@@ -477,19 +526,21 @@ void getParameterLocks()
   uint16_t  thisParamLock;
   uint16_t  lastParamLock;
   uint8_t   thisStep;
-  uint8_t   lastStep;
+
 
   //  todo: re-enable this loop if parameter locks are stored per track
   //for(uint8_t i = 0; i < MAX_SEQUENCER_TRACKS; i++)
   //{
     thisStep = sequencer.getCurrentStep(SEQUENCER_TRACK_0);
 
-    for (uint8_t paramIndex = 0; paramIndex < MAX_ANALOG_INPUTS; paramIndex++)
+    for (uint8_t paramIndex = 0; paramIndex < MAX_PARAMETER_LOCKS; paramIndex++)
     {
       thisParamLock = sequencer.getParameterLock(paramIndex, SEQUENCER_TRACK_0, thisStep);
       
       if (thisParamLock != 0)
       {
+        #ifndef ENABLE_MIDI_OUTPUT
+
         /*
         Serial.print(F("parameter lock for channel "));
         Serial.print(i);
@@ -498,6 +549,8 @@ void getParameterLocks()
         Serial.print(F(" value "));
         Serial.println(thisParamLock);
         */
+        #endif
+
         // set the flag for this input - last parameter was a lock
         bitsLastParamLock |= 1 << paramIndex;
       }
@@ -506,6 +559,8 @@ void getParameterLocks()
         // if the last step was a parameter lock but this step doesn't have one, set the parameter lock to the current knob position
         if ((bitsLastParamLock >> paramIndex) & 1)
         {
+          #ifndef ENABLE_MIDI_OUTPUT
+
           /*
           Serial.print(F("clearing last parameter lock for channel "));
           Serial.print(i);
@@ -514,6 +569,7 @@ void getParameterLocks()
           Serial.print(F(" knob value "));
           Serial.println(iCurrentAnalogValue[i]);
           */
+          #endif
           thisParamLock = iCurrentAnalogValue[SEQUENCER_TRACK_0];
         }
 
@@ -539,8 +595,8 @@ void getParameterLocks()
             voices[SEQUENCER_TRACK_0]->setParam(SYNTH_PARAMETER_MOD_RATIO, iCurrentAnalogValue[ANALOG_INPUT_MOD_RATIO]);
             break;
             
-          case ANALOG_INPUT_LFORATE: 
-            voices[SEQUENCER_TRACK_0]->setParam(SYNTH_PARAMETER_ENVELOPE_SHAPE, iCurrentAnalogValue[ANALOG_INPUT_LFORATE]);
+          case ANALOG_INPUT_LFO: 
+            voices[SEQUENCER_TRACK_0]->setParam(SYNTH_PARAMETER_ENVELOPE_SHAPE, iCurrentAnalogValue[ANALOG_INPUT_LFO]);
             break;
         }
       }
@@ -614,7 +670,9 @@ void updateSyncTrigger()
     //trigger note on or off
     if (iTrigger == HIGH)
     {
+      #ifndef ENABLE_MIDI_OUTPUT
       //Serial.println("sync!");
+      #endif
       sequencer.syncPulse(SYNC_STEPS_PER_PULSE);
     }
 
@@ -650,7 +708,9 @@ void updateButtonControls()
     {
       interfaceMode = INTERFACE_MODE_SHIFT;
     }
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(interfaceMode);
+    #endif
   }
 
 
@@ -673,8 +733,10 @@ void updateButtonControls()
           break;
       }
     }
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("motionRecordMode="));
     Serial.println(motionRecordMode);
+    #endif
   }
 
   /*
@@ -691,18 +753,26 @@ void updateButtonControls()
     }
   }
   */
-  if (getCurrentButtonState(BUTTON_INPUT_RETRIG) != getLastButtonState(BUTTON_INPUT_RETRIG))
+  if (getCurrentButtonState(BUTTON_INPUT_VOICE) != getLastButtonState(BUTTON_INPUT_VOICE))
   {
     switch(interfaceMode)
     {
       case INTERFACE_MODE_NORMAL:   
-        if (getCurrentButtonState(BUTTON_INPUT_RETRIG) == HIGH)
+        if (getCurrentButtonState(BUTTON_INPUT_VOICE) == HIGH)
         {
           updateSynthControl();
         }
         break;
       case INTERFACE_MODE_SHIFT:    
-        // todo: shift mode
+        if (getCurrentButtonState(BUTTON_INPUT_VOICE) == HIGH)
+        {
+          voices[controlSynthVoice]->toggleFMMode();
+          //todo: display icon for current FM mode
+          displaySettingIcon(BITMAP_NUMERALS[voices[controlSynthVoice]->getFMMode()]);
+
+
+        }     
+
         break;
     }
   }
@@ -730,7 +800,10 @@ void updateButtonControls()
         updateTonic(1);   
         break;
       case INTERFACE_MODE_SHIFT:    
-        updateTonic(-1);
+        sequencer.setOctave((sequencer.getOctave() + 1) % 7);
+        displaySettingIcon(BITMAP_NUMERALS[sequencer.getOctave()]);
+
+        //updateTonic(-1);
         break;
     }
   }
@@ -755,10 +828,12 @@ void updateButtonControls()
     
     if (getLastButtonState(i) != getCurrentButtonState(i))
     {
+      #ifndef ENABLE_MIDI_OUTPUT
       Serial.print(F("Button state changed - button["));
       Serial.print(i);
       Serial.print(F("] state = "));
       Serial.println(getCurrentButtonState(i));
+      #endif
 
       ledDisplay.setPixel(i,1, getCurrentButtonState(i) == HIGH);
     }
@@ -821,8 +896,10 @@ void startStopSequencer()
 void updateSynthControl()
 {
   controlSynthVoice = (controlSynthVoice + 1) % MAX_SEQUENCER_TRACKS;
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.print(F("Voice Control="));
   Serial.println(controlSynthVoice);
+  #endif
 }
 
 
@@ -871,8 +948,12 @@ inline void updateAnalogControls()
 
     if (analogInputHasChanged(i))
     {
+      #ifndef ENABLE_MIDI_OUTPUT
+
       Serial.print(F("analog input changed: "));
       Serial.println(i);
+
+      #endif
 
       switch(i)
       {
@@ -933,20 +1014,49 @@ inline void updateAnalogControls()
           
          break;
 
-        case ANALOG_INPUT_LFORATE:
-          //todo: when programming for nano with 8 analog inputs, separate these inputs into: ATTACK, DECAY, LFO
+        case ANALOG_INPUT_LFO:
           switch (interfaceMode)
           {
             case INTERFACE_MODE_NORMAL: 
-              voices[controlSynthVoice]->setParam(SYNTH_PARAMETER_ENVELOPE_SHAPE, iCurrentAnalogValue[ANALOG_INPUT_LFORATE]);
-              setParameterLock(ANALOG_INPUT_LFORATE, iCurrentAnalogValue[ANALOG_INPUT_LFORATE]);
+              voices[controlSynthVoice]->setParam(SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH,iCurrentAnalogValue[ANALOG_INPUT_LFO]);
               break;
             case INTERFACE_MODE_SHIFT:  
-              voices[controlSynthVoice]->setLFOFrequency((float)scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_LFORATE],512,100,5000)/(float)100.0);
+              voices[controlSynthVoice]->setLFOFrequency((float)scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_LFO],512,100,5000)/(float)100.0);
               break;
           }
           
           break;
+
+
+        case ANALOG_INPUT_MOD_ENVELOPE1:
+          
+          switch (interfaceMode)
+          {
+            case INTERFACE_MODE_NORMAL: 
+              voices[controlSynthVoice]->setParam(SYNTH_PARAMETER_ENVELOPE_DECAY, iCurrentAnalogValue[ANALOG_INPUT_MOD_ENVELOPE1]);
+              break;
+            case INTERFACE_MODE_SHIFT:  
+              //todo: shift function for decay knob
+              break;
+          }
+          
+          break;
+
+
+        case ANALOG_INPUT_MOD_ENVELOPE2:
+          
+          switch (interfaceMode)
+          {
+            case INTERFACE_MODE_NORMAL: 
+              voices[controlSynthVoice]->setParam(SYNTH_PARAMETER_ENVELOPE_ATTACK, iCurrentAnalogValue[ANALOG_INPUT_MOD_ENVELOPE2]);
+              break;
+            case INTERFACE_MODE_SHIFT:  
+              //todo: shift function for attack knob
+              break;
+          }
+          
+          break;
+
       }
       
       iLastAnalogValue[i] = iCurrentAnalogValue[i];
@@ -956,25 +1066,22 @@ inline void updateAnalogControls()
 }
 
 
-/*
-void updateDuckingAmount()
-{
-  sequencer.setDuckingAmount(scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_OSC2TUNE],255));
-}
-*/
-
 inline void setParameterLock(uint8_t paramChannel, uint16_t value)
 {
   switch (motionRecordMode)
   {
     case MOTION_RECORD_REC:
         sequencer.setParameterLock(paramChannel, value);
+        #ifndef ENABLE_MIDI_OUTPUT
         Serial.println(F("setParameterLock(0)"));
+        #endif
         break;
 
     case MOTION_RECORD_CLEAR:
         sequencer.clearAllParameterLocks(paramChannel);
+        #ifndef ENABLE_MIDI_OUTPUT
         Serial.println(F("Clear ParameterLock(0)"));
+        #endif
         break;
 
     case MOTION_RECORD_NONE:
@@ -1007,19 +1114,20 @@ void updateNoteDecay(bool ignoreRecordMode)
  */
 void updateTonic(int incr)
 {
+  // todo: fix this
 
-                          // C   D   E   F   G   A   B   C   D   E   F   G   A   B   C   D   E   F   G   A   B   C   D   E   F   G
-  int8_t tonicNotes[26] = { 25, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67};
+                        // C  D  E  F  G  A   B  
+  int8_t tonicNotes[7] = { 0, 2, 4, 5, 7, 9, 11};
   byte tonicIndex;
   
-  for (uint8_t i = 0; i < 26; i++)
+  for (uint8_t i = 0; i < 7; i++)
   {
     if(tonicNotes[i] == sequencer.getTonic())
     {
       tonicIndex = i;    
     }
   }
-  tonicIndex = (tonicIndex + incr) % 26;
+  tonicIndex = (tonicIndex + incr) % 7;
   
   sequencer.setTonic(tonicNotes[tonicIndex]);
   displaySettingIcon(BITMAP_ALPHA[getMidiNoteIconIndex(sequencer.getTonic())]);
@@ -1027,21 +1135,27 @@ void updateTonic(int incr)
 
 
 
+/*----------------------------------------------------------------------------------------------------------
+ * getMidiNoteIconIndex
+ * returns the icon index for the given midi note (represented as A, B C, etc...)
+ *----------------------------------------------------------------------------------------------------------
+ */
 uint8_t getMidiNoteIconIndex(uint8_t midinote)
 {
   uint8_t basenote;
-  basenote = (midinote - 9) % 12;
-
+  basenote = (midinote) % 12;
+  
+  // todo: fix this
   switch(basenote)
   {
-    case 0: return 0;
-    case 2: return 1;
-    case 3: return 2;
-    case 5: return 3;
-    case 7: return 4;
-    case 8: return 5;
-    case 10: return 6;
-    default: return 0;
+    case 0: return 2; //C
+    case 2: return 3; //D
+    case 4: return 4; //E
+    case 5: return 5; //F
+    case 7: return 6; //G
+    case 9: return 0; //A
+    case 11: return 1; //B
+    default: return 0; //A
   }
 }
 
@@ -1076,8 +1190,7 @@ void updateDisplay()
   byte currentNote[MAX_SEQUENCER_TRACKS];
   byte currentStep[MAX_SEQUENCER_TRACKS];
   
-  byte scaledInputValue[MAX_ANALOG_INPUTS];
-  
+
   if (settingDisplayTimer.ready())
   {
     currentNote[SEQUENCER_TRACK_0] = sequencer.getCurrentNote(SEQUENCER_TRACK_0);
@@ -1185,7 +1298,6 @@ void displaySettingIcon(const byte* bitmap)
 
   ledDisplay.displayIcon(&bitmapRAM[0]);
   settingDisplayTimer.start(DISPLAY_SETTING_CHANGE_PERSIST_MILLIS);
-  settingDisplayIconOn = true;
 }
 
 
@@ -1195,9 +1307,11 @@ void displaySettingIcon(const byte* bitmap)
  */
 void debugWriteValue(char* valueName, int value)
 {
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.print(valueName);
   Serial.print(F("="));
   Serial.println(value);
+  #endif
 }
 
 

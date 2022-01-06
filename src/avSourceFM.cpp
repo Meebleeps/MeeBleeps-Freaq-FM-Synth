@@ -30,7 +30,11 @@ MutatingFM::MutatingFM()
   masterGain = 255;
   setOscillator(0);
   setFreqs(33);
-  param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH] = 1023;
+  updateCount = 0;
+    envelopeMod->setADLevels(255,0);
+
+
+  param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH] = 0;
 
 }
 
@@ -62,34 +66,53 @@ void MutatingFM::setOscillator(uint8_t oscIndex)
 
 int MutatingFM::noteOn(byte pitch, byte velocity, unsigned int length)
 {
+  #ifndef ENABLE_MIDI_OUTPUT
   
   //Serial.print(F("MutatingFM::noteOn("));
   //Serial.print(pitch);
   //Serial.println(F(")"));
+  #endif
+
 
   if (velocity > 0 && pitch > 0)
   {
     if (length != lastNoteLength)
     {
       envelopeAmp->setTimes(0,length,0,50);
-      envelopeAmp->setADLevels(255,170);
+      envelopeAmp->setADLevels(255,200);
     }
     envelopeAmp->noteOn(false); 
 
     // setup modulation envelope attack, decay time based on parameters
     //envelopeMod->setADLevels(param[SYNTH_PARAMETER_MOD_AMOUNT],min(param[SYNTH_PARAMETER_FILTER_SUSTAIN],param[SYNTH_PARAMETER_MOD_AMOUNT]));
     //envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY],length,50);
-
-
-
-    envelopeMod->noteOn(false);
-
-    
-
-    Serial.print(F("note on: attack level="));
-    Serial.println(param[SYNTH_PARAMETER_MOD_AMOUNT] >> 2);
+  
+    if (param[SYNTH_PARAMETER_ENVELOPE_ATTACK] < MIN_MODULATION_ENV_TIME)
+    {
+      envelopeMod->setTimes(0,param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,length,50);
+    }
+    else
+    {
+      envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,length,50);
+    }
 
     setFreqs(pitch);
+    envelopeMod->noteOn(true);
+
+    #ifndef ENABLE_MIDI_OUTPUT
+    
+    /*
+    Serial.print(F("note on: envelopeMod ADSR=("));
+    Serial.print(param[SYNTH_PARAMETER_ENVELOPE_ATTACK]);
+    Serial.print(F(", "   ));
+    Serial.print(param[SYNTH_PARAMETER_ENVELOPE_DECAY]);
+    Serial.print(F(", Sustain Level="   ));
+    Serial.print(param[SYNTH_PARAMETER_ENVELOPE_SUSTAIN] >> 2);
+    Serial.print(F(", 50)"   ));
+    Serial.println();
+    */
+    #endif
+
     lastNoteLength = length;
   }
   else
@@ -136,16 +159,46 @@ inline int MutatingFM::updateAudio()
  */
 inline void MutatingFM::updateControl()
 {
+  #ifdef SYNTH_MODULATION_UPDATE_DIVIDER
+  // CONTROL_RATE has to be high to reduce jitter in the sequencer but running these calcs at 128hz seems to be too high, so only do it every 2nd call
+  if (++updateCount % SYNTH_MODULATION_UPDATE_DIVIDER == 0)
+  {
+  #endif
 
-  // update amplitude envelope 
-  envelopeAmp->update();
+    // update amplitude & modulation envelopes
+    // 20-30 micros
+    envelopeAmp->update();
+    envelopeMod->update();
 
-  // update modulation amount using envelope and lfo
-  envelopeMod->update();
-  lastLFOValue = lfo->next()+128;
+  #ifdef SYNTH_MODULATION_UPDATE_DIVIDER
+  }
+  #endif
 
-  modulatorAmount = (uint32_t)(envelopeMod->next() * lastLFOValue) << 3; //(baseModAmount + lfoModAmount + envModAmount) << 16;
-  currentGain     = envelopeAmp->next();  
+    // store gain for use in updateAudio
+    currentGain     = envelopeAmp->next();  
+
+    // store LFO value for use in displaying the lfo position onscreen.
+    lastLFOValue    = lfo->next()+128;
+
+    //modulatorAmount = (uint32_t)(envelopeMod->next() * lastLFOValue) << 3; //(baseModAmount + lfoModAmount + envModAmount) << 16;
+
+    // modulatorAmount is a Q16n16 unsigned fixed-point value. 1.0 = 1<<16.
+    // musically interesting range seems to be ~0-10
+
+    //modulation amount = MOD_ENVELOPE * ENVELOPE_AMOUNT + LFO*LFO_AMOUNT
+
+    /*
+    modulatorAmount = (((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT] * ((uint32_t)envelopeMod->next())) << MOD_DEPTH_MULTIPLIER_ENV)
+                      + ((((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH] * ((uint32_t)lastLFOValue)) >> 1))// MOD_DEPTH_MULTIPLIER_LFO))
+                      ;
+    */
+    modulatorAmount = ((((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT])          * (uint32_t)envelopeMod->next())
+                      + (((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH]) * (uint32_t)lastLFOValue)
+                      );
+    #ifndef ENABLE_MIDI_OUTPUT
+
+    //Serial.println(Q16n16_to_float(modulatorAmount));
+    #endif
 
 }
 
@@ -172,6 +225,7 @@ void MutatingFM::setGain(byte gain)
 void MutatingFM::setFreqs(uint8_t midiNote) 
 {
   uint8_t multIndex;
+  float freqshift[17] = {0,0.03125,0.0625,0.125,0.25,0.5,1,1.5,2,2.5,3,3.5,4,5,6,7,8};
 
 
   if(midiNote != lastMidiNote && midiNote != 0)
@@ -180,18 +234,37 @@ void MutatingFM::setFreqs(uint8_t midiNote)
     carrier->setFreq_Q16n16(carrierFrequency);
     lastMidiNote = midiNote;
   }
-  
-  lastParam[SYNTH_PARAMETER_MOD_RATIO] = param[SYNTH_PARAMETER_MOD_RATIO];
 
-  multIndex = param[SYNTH_PARAMETER_MOD_RATIO]/79;//(1023/13);
-  float freqshift[13] = {0,0.03125,0.0625,0.125,0.25,0.5,1,1.5,2,2.5,3,3.5,4};
-  if (multIndex>0)
+  // added EXPONENTIAL & LINEAR FM modes - exponential is fixed to defined multiples
+  // LINEAR is carrier * value with two ranges
+  switch(fmMode)
   {
-    modulationFrequency = carrierFrequency * freqshift[multIndex];
-  }
-  else
-  {
-    modulationFrequency = carrierFrequency*((float)1.0 / ((512-param[SYNTH_PARAMETER_MOD_RATIO])+1));
+    case FM_MODE_EXPONENTIAL:
+      lastParam[SYNTH_PARAMETER_MOD_RATIO] = param[SYNTH_PARAMETER_MOD_RATIO];
+
+      multIndex = param[SYNTH_PARAMETER_MOD_RATIO]/61;//(1023/17);
+
+      if (multIndex>0)
+      {
+        modulationFrequency = carrierFrequency * freqshift[multIndex];
+      }
+      else
+      {
+        modulationFrequency = carrierFrequency*((float)1.0 / ((512-param[SYNTH_PARAMETER_MOD_RATIO])+1));
+      }
+      break;
+
+    case FM_MODE_LINEAR_HIGH:
+      modulationFrequency = carrierFrequency*(float)param[SYNTH_PARAMETER_MOD_RATIO]/100;// carrierFrequency*((float)1.0 / ((512-param[SYNTH_PARAMETER_MOD_RATIO])+1));
+      break;
+
+    case FM_MODE_LINEAR_LOW:
+      modulationFrequency = carrierFrequency*(float)param[SYNTH_PARAMETER_MOD_RATIO]/10000;// carrierFrequency*((float)1.0 / ((512-param[SYNTH_PARAMETER_MOD_RATIO])+1));
+      break;
+
+    case FM_MODE_FREE:
+      modulationFrequency = (uint32_t)param[SYNTH_PARAMETER_MOD_RATIO] << 19; //0-1023 << 20 into a Q16n16 value = 0-16000hz
+      break;
   }
 
   modulator->setFreq_Q16n16(modulationFrequency);
@@ -199,6 +272,7 @@ void MutatingFM::setFreqs(uint8_t midiNote)
 
 
 /*
+  #ifndef ENABLE_MIDI_OUTPUT
   
   if (midiNote != 0)
   {
@@ -220,6 +294,8 @@ void MutatingFM::setFreqs(uint8_t midiNote)
     Serial.print(Q16n16_to_float(modulationFrequency));
     Serial.println();
   }
+  #endif
+
   */
 }
 
@@ -233,13 +309,17 @@ void MutatingFM::setFreqs(uint8_t midiNote)
  */
 void MutatingFM::setModulationShape(uint16_t newValue)
 {
+  #ifndef ENABLE_MIDI_OUTPUT
+
   Serial.print(F("setModulationShape("));
   Serial.print(newValue);
   Serial.print(F(") "));
-
+  #endif
   if (newValue >= 0 && newValue < MAX_FILTER_SHAPE)
   {
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F(" settiing ATTACK "));
+    #endif
 
     // for first 60% of range, attack = 0
     // for second part of range, attack is linear
@@ -253,15 +333,19 @@ void MutatingFM::setModulationShape(uint16_t newValue)
     }
 
     // set decay
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F(" settiing DECAY"));
+    #endif
 
-    param[SYNTH_PARAMETER_ENVELOPE_DECAY] = newValue + MIN_FILTER_ENV_DECAY;
+    param[SYNTH_PARAMETER_ENVELOPE_DECAY] = newValue;
 
     // set sustain volume
     // for first 1/2 of range, sustain is cubic
     // for second 3/4 of range, sustain is maxxed
     // for last part sustain decreases from 255 to 128
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F(" settiing SUSTAIN"));
+    #endif
 
     if (newValue < 512)
     {
@@ -279,9 +363,10 @@ void MutatingFM::setModulationShape(uint16_t newValue)
 
     param[SYNTH_PARAMETER_ENVELOPE_SHAPE] = newValue;
   }
+  #ifndef ENABLE_MIDI_OUTPUT
 
   Serial.println(F(")"));
-
+  #endif
 }
 
 
@@ -294,49 +379,37 @@ void MutatingFM::setParam(uint8_t paramIndex, uint16_t newValue)
   if (param[paramIndex] != newValue)
   {
     param[paramIndex] = newValue;
-    if ( paramIndex == SYNTH_PARAMETER_MOD_RATIO)
-    {
-      setFreqs(0);
-    }
-    else if ( paramIndex == SYNTH_PARAMETER_MOD_AMOUNT)
-    {
-      envelopeMod->setADLevels(param[SYNTH_PARAMETER_MOD_AMOUNT] >> 2,0);//param[SYNTH_PARAMETER_FILTER_CUTOFF],min(param[SYNTH_PARAMETER_FILTER_SUSTAIN],param[SYNTH_PARAMETER_FILTER_CUTOFF]));
-      /*
-      Serial.print(F("envelopeMod ADSR=("));
-      Serial.print(param[SYNTH_PARAMETER_ENVELOPE_ATTACK]);
-      Serial.print(F(","));
-      Serial.print(param[SYNTH_PARAMETER_ENVELOPE_DECAY]);
-      Serial.print(F(","));
-      Serial.print(lastNoteLength);
-      Serial.print(F(","));
-      Serial.print(50);
-      Serial.print(F(") ADLevels="));
-      Serial.print(param[SYNTH_PARAMETER_MOD_AMOUNT] >> 2);
-      Serial.print(F(","));
-      Serial.print(0);
-      Serial.println(F(")"));
-      */
 
-    }
-    else if (paramIndex == SYNTH_PARAMETER_ENVELOPE_SHAPE)
+    switch(paramIndex)
     {
-      setModulationShape(newValue);
-      envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY],lastNoteLength,50);
-      /*
-      Serial.print(F("envelopeMod ADSR=("));
-      Serial.print(param[SYNTH_PARAMETER_ENVELOPE_ATTACK]);
-      Serial.print(F(","));
-      Serial.print(param[SYNTH_PARAMETER_ENVELOPE_DECAY]);
-      Serial.print(F(","));
-      Serial.print(lastNoteLength);
-      Serial.print(F(","));
-      Serial.print(50);
-      Serial.print(F(") ADLevels="));
-      Serial.print(param[SYNTH_PARAMETER_MOD_AMOUNT] >> 2);
-      Serial.print(F(","));
-      Serial.print(0);
-      Serial.println(F(")"));
-      */
+      case SYNTH_PARAMETER_MOD_RATIO:
+        setFreqs(0);
+        break;
+      
+      case SYNTH_PARAMETER_MOD_AMOUNT:
+        envelopeMod->setADLevels(param[SYNTH_PARAMETER_MOD_AMOUNT] >> 2,0);
+        break;
+
+      case SYNTH_PARAMETER_ENVELOPE_SHAPE:
+        setModulationShape(newValue);
+        envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,lastNoteLength,50);
+        break;
+
+      case SYNTH_PARAMETER_ENVELOPE_ATTACK:
+//        envelopeMod->setAttackTime(param[SYNTH_PARAMETER_ENVELOPE_ATTACK]);
+        envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,lastNoteLength,50);
+        break;
+
+      case SYNTH_PARAMETER_ENVELOPE_DECAY:
+
+//        envelopeMod->setDecayTime(param[SYNTH_PARAMETER_ENVELOPE_DECAY]);
+        envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,lastNoteLength,50);
+        break;
+
+      case SYNTH_PARAMETER_ENVELOPE_SUSTAIN:
+        envelopeMod->setSustainLevel(param[SYNTH_PARAMETER_ENVELOPE_SUSTAIN] >> 2);
+        break;
+
     }
   }
 }
@@ -347,6 +420,16 @@ uint16_t MutatingFM::getParam(uint8_t paramIndex)
   return param[paramIndex];
 }
 
+
+void MutatingFM::toggleFMMode()
+{
+  fmMode = (fmMode + 1) % MAX_FM_MODES;
+}
+
+uint8_t MutatingFM::getFMMode()
+{
+  return fmMode;
+}
 
 int MutatingFM::mutate()
 {

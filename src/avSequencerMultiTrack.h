@@ -39,6 +39,8 @@ class MutatingSequencerMultiTrack : MutatingSequencer
     using MutatingSequencer::setTonic;
     using MutatingSequencer::getScale;
     using MutatingSequencer::setScale;
+    using MutatingSequencer::setOctave;
+    using MutatingSequencer::getOctave;
 
     void setParameterLock(byte channel, int value);
     int  getParameterLock(byte channel);
@@ -63,6 +65,8 @@ class MutatingSequencerMultiTrack : MutatingSequencer
     void mutateSequence();
     void mutateSequenceDefault();
     void mutateSequenceArp();
+    void mutateSequenceDrone();
+    void mutateSequenceArp2();
 
     void nextStep(bool restart);
     bool update(bool restart);      //returns true if sequencer moved to next step    

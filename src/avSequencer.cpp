@@ -45,7 +45,8 @@ MutatingSequencer::MutatingSequencer()
   currentStep         = 0;  
   retrigStep          = 0;     
   retrigState         = false;                        
-  tonicNote           = 33;   // default to A2                           
+  tonicNote           = 9;   // default to A
+  octave              = 1;                           
   mutationProbability = 0;
   noteProbability      = 70;
   tonicProbability    = 30;
@@ -87,7 +88,9 @@ MutatingSequencer::MutatingSequencer()
  */
 void MutatingSequencer::start()
 {
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.println(F("Sequencer.Start()"));
+  #endif
   running             = true;
   ignoreNextSyncPulse = true;
   //nextStep(true);
@@ -103,8 +106,9 @@ void MutatingSequencer::start()
  */
 void MutatingSequencer::stop()
 {
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.println(F("Sequencer.Stop()"));
-
+  #endif
   running = false;
 }
 
@@ -137,8 +141,10 @@ void MutatingSequencer::toggleStart()
 {
   initialiseScale(scaleMode);
   newSequence(sequenceLength);
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.print(F("NEW SCALE: "));
   Serial.println(scaleMode);
+  #endif
 }
 
 
@@ -182,8 +188,10 @@ void MutatingSequencer::setAlgorithm(uint8_t newValue)
 void MutatingSequencer::nextAlgorithm()
 {
   mutationAlgorithm = (mutationAlgorithm + 1) % MAX_MUTATE_ALGO_COUNT;
+  #ifndef ENABLE_MIDI_OUTPUT
   Serial.print(F("New Algorithm = "));
   Serial.println(mutationAlgorithm);
+  #endif
 }
 
 
@@ -296,11 +304,13 @@ void MutatingSequencer::setTonic(int8_t newTonic)
   
   if (newTonic != tonicNote)
   { 
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("OLD TONIC: "));
     Serial.print(tonicNote);
     Serial.print(F(", NEW TONIC: "));
     Serial.println(newTonic);
-  
+    #endif
+
     noteShift = newTonic - tonicNote;
     tonicNote = newTonic;
     
@@ -321,6 +331,43 @@ void MutatingSequencer::setTonic(int8_t newTonic)
 int8_t MutatingSequencer::getTonic()
 {
   return tonicNote;
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::setOctave()
+ * sets a new octave
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencer::setOctave(int8_t newOctave)
+{
+  int8_t noteShift;
+  
+  if (newOctave != octave)
+  { 
+    noteShift = (newOctave - octave) * 12;
+    octave = newOctave;
+    
+    // update the whole sequence to the new tonic
+    for(int i=0; i< MAX_SEQUENCE_LENGTH; i++)
+    {
+      if(notes[i] > 0) notes[i] += noteShift;      
+    }
+
+    printSequence();
+  }
+
+}
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::getOctave()
+ * returns the current octave
+ *----------------------------------------------------------------------------------------------------------
+ */
+int8_t MutatingSequencer::getOctave()
+{
+  return octave;
 }
 
 
@@ -408,8 +455,6 @@ bool MutatingSequencer::update(bool restart)
 {
   bool processStep = false;
   
-  duckingEnvelope.update();
-
   if (running)
   {
     if (restart || (running && stepTimer.ready()))
@@ -440,21 +485,15 @@ void MutatingSequencer::nextStep(bool restart)
   {
     currentStep = ++currentStep % sequenceLength;
   }
-
+  #ifndef ENABLE_MIDI_OUTPUT
   //Serial.print(F("nextStep()  step="));
   //Serial.println(currentStep);
+  #endif
 
 
   currentNote = notes[currentStep];
 
-  mutateSequence();
   
-
-  if(duckingCounter == 0)
-  {
-    duckingEnvelope.noteOn(true); 
-  }
-  duckingCounter = ++duckingCounter % 4;
 
   setNextStepTimer();
 
@@ -480,9 +519,10 @@ void MutatingSequencer::setNextStepTimer()
     // adjust the next step 
 
     timeElapsedSincePulseMicros = currentStepTimeMicros - lastSyncPulseTimeMicros;
-    
+    #ifndef ENABLE_MIDI_OUTPUT
     //Serial.print(F("timeElapsedSincePulseMicros="));
     //Serial.print(timeElapsedSincePulseMicros);
+    #endif
 
     if(nextStepTimeMillis*1000 > timeElapsedSincePulseMicros)
     {
@@ -492,9 +532,11 @@ void MutatingSequencer::setNextStepTimer()
     {
       forecastTimeToNextStepMicros = nextStepTimeMillis*1000;  
     }
+    #ifndef ENABLE_MIDI_OUTPUT
     //Serial.print(F(" adjusted="));
     //Serial.println(forecastTimeToNextStepMicros);
-    
+    #endif
+
     stepTimer.start(forecastTimeToNextStepMicros/1000 + 3); 
     
     syncPulseLive = false;
@@ -578,12 +620,12 @@ void MutatingSequencer::newSequence(byte seqLength)
   for(int i=0; i < sequenceLength; i++)
   { 
                //root     //scale note                        //octave
-    notes[i] = tonicNote + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
+    notes[i] = tonicNote + (12*octave) + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
 
     //sprinkle the tonic in there with a bit more frequency
     if (rand(100) < tonicProbability) 
     {
-      notes[i] = tonicNote + (12*rand(octaveSpread));
+      notes[i] = tonicNote + (12*octave) + (12*rand(octaveSpread));
     }
     
     // sprinkle some rests
@@ -638,12 +680,12 @@ void MutatingSequencer::mutateSequenceDefault()
       {
         if (rand(100) < tonicProbability) 
         {
-          notes[seqStep] = tonicNote + (12*rand(octaveSpread));
+          notes[seqStep] = tonicNote + (12*octave) + (12*rand(octaveSpread));
         }
         else
         {
                         //root        //scale note                        //octave
-          notes[seqStep] = tonicNote + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
+          notes[seqStep] = tonicNote + (12*octave) + scaleNotes[rand(scaleNoteCount)] + (12*rand(octaveSpread));
         }
         
       }
@@ -685,21 +727,29 @@ void MutatingSequencer::mutateSequenceArp()
     // put in a run of scale notes starting at a random step on a random scalenote in a random octave
     startStep   = rand(MAX_SEQUENCE_LENGTH);
     startNote   = rand(scaleNoteCount);
-    startOctave = rand(octaveSpread);
+    startOctave = octave + rand(octaveSpread);
     stepSize    = rand(2) + 1;
 
     if (rand(100) < noteProbability)
     {
+      #ifndef ENABLE_MIDI_OUTPUT
       Serial.print(F("new arpeggio run: "));
+      #endif
+
       for (uint8_t i = 0; i < runLength; i++)
       {
         seqStep = (startStep + i) % MAX_SEQUENCE_LENGTH;
         seqNote = scaleNotes[(startNote + (i*stepSize*runDirection) ) % scaleNoteCount];
         notes[seqStep] = tonicNote + seqNote + (12*(startOctave + (startNote + i < scaleNoteCount ? 0 : 1)));
+        #ifndef ENABLE_MIDI_OUTPUT
         Serial.print(notes[seqStep]);
         Serial.print(F(","));
+        #endif
+
       }
+      #ifndef ENABLE_MIDI_OUTPUT
       Serial.println();
+      #endif
   }
   }
 
@@ -726,8 +776,11 @@ void MutatingSequencer::setNextNoteLength(uint16_t newNoteLength)
   if (newNoteLength > 0 and newNoteLength <= 65000 && newNoteLength != nextStepNoteLength)
   {
     nextStepNoteLength = newNoteLength;  
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("nextStepNoteLength="));
     Serial.println(nextStepNoteLength);
+    #endif
+
   }
 }
 
@@ -745,8 +798,11 @@ void MutatingSequencer::setScatterProbability(byte newProbability)
   if(newProbability >= 0 && newProbability <= 100 && newProbability != scatterProbability)
   {
     scatterProbability = newProbability;
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("scatterProbability="));
     Serial.println(scatterProbability);
+    #endif
+
   }
 
 }
@@ -772,8 +828,10 @@ void MutatingSequencer::setSequenceLength(byte newLength)
   if(newLength > 0 && newLength <= MAX_SEQUENCE_LENGTH && sequenceLength != newLength)
   {
     sequenceLength = newLength;
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("sequenceLength="));
     Serial.println(sequenceLength);
+    #endif
   }
 }
 
@@ -782,8 +840,10 @@ void MutatingSequencer::setNoteProbability(byte newProbability)
   if (newProbability >= 0 && newProbability <= 100 && newProbability != noteProbability)
   {
     noteProbability = newProbability;
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("noteProbability="));
     Serial.println(noteProbability);
+    #endif
   }
 }
 
@@ -798,8 +858,11 @@ void MutatingSequencer::setMutationProbability(byte newProbability)
   if (newProbability >= 0 && newProbability <= 100 && newProbability != mutationProbability)
   {
     mutationProbability = newProbability;
+    #ifndef ENABLE_MIDI_OUTPUT
     Serial.print(F("mutationProbability="));
     Serial.println(mutationProbability);
+    #endif
+
   }
 }
 
@@ -812,6 +875,8 @@ byte MutatingSequencer::getMutationProbability()
 
 void MutatingSequencer::printParameters()
 {
+  #ifndef ENABLE_MIDI_OUTPUT
+
   /*
   Serial.print(F("Parameters: note prob="));
   Serial.print(noteProbability);
@@ -831,6 +896,8 @@ void MutatingSequencer::printParameters()
 
   Serial.print(F("\n"));
   */
+  #endif
+  
 }
 
 
@@ -872,11 +939,14 @@ void MutatingSequencer::print()
 
 void MutatingSequencer::printSequence()
 {
+  #ifndef ENABLE_MIDI_OUTPUT
+  
   for(int i=0; i < sequenceLength; i++)
   {
     Serial.print(notes[i]);
     Serial.print(F(" "));
   }
   Serial.print(F("}\n"));
+  #endif
   
 }
