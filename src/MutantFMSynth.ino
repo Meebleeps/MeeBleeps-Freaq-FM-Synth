@@ -36,24 +36,24 @@
 #define MAX_ANALOG_INPUTS               8
 #define MAX_ANALOG_VALUE                1023
 
-#define ANALOG_INPUT_MOD_AMOUNT         0
-#define ANALOG_INPUT_DECAY              1
-#define ANALOG_INPUT_MUTATION           2
-#define ANALOG_INPUT_LFO                3
-#define ANALOG_INPUT_MOD_RATIO          4
-#define ANALOG_INPUT_STEPCOUNT          5
-#define ANALOG_INPUT_MOD_ENVELOPE1      6
-#define ANALOG_INPUT_MOD_ENVELOPE2      7
+#define ANALOG_INPUT_MOD_AMOUNT         7
+#define ANALOG_INPUT_DECAY              4
+#define ANALOG_INPUT_MUTATION           0
+#define ANALOG_INPUT_LFO                1
+#define ANALOG_INPUT_MOD_RATIO          6
+#define ANALOG_INPUT_STEPCOUNT          2
+#define ANALOG_INPUT_MOD_ENVELOPE1      5
+#define ANALOG_INPUT_MOD_ENVELOPE2      3
 
 #define ANALOG_INPUT_MOVEMENT_THRESHOLD 10
 
 // listed in order of left to right.
-#define BUTTON_INPUT_FUNC   0
-#define BUTTON_INPUT_TONIC  3
+#define BUTTON_INPUT_FUNC   4
+#define BUTTON_INPUT_TONIC  5
 #define BUTTON_INPUT_SCALE  2
-#define BUTTON_INPUT_START  1
-#define BUTTON_INPUT_REC    4
-#define BUTTON_INPUT_VOICE  5
+#define BUTTON_INPUT_START  3
+#define BUTTON_INPUT_REC    1
+#define BUTTON_INPUT_VOICE  0
 #define MAX_OSCILLATOR_MODES 1
 
 #define INTERFACE_MODE_NORMAL 0
@@ -67,7 +67,7 @@
 
 // todo:  decrease INTERFACE_UPDATE_DIVIDER  if controls are externally modulated via CV voltage inputs
 #define INTERFACE_UPDATE_DIVIDER_ANALOG 5
-#define INTERFACE_UPDATE_DIVIDER_DIGITAL 4
+#define INTERFACE_UPDATE_DIVIDER_DIGITAL 7
 
 const PROGMEM byte BITMAP_MEEBLEEPS[]  = {B00011000,B01111110,B11011011,B11011011,B11011011,B11011011,B11000011,B00000110};
 const PROGMEM byte BITMAP_NUMERALS[8][8]  = {
@@ -80,6 +80,7 @@ const PROGMEM byte BITMAP_NUMERALS[8][8]  = {
                                       ,{B00000000,B00000111,B00000000,B11100000,B10000000,B11100000,B10100000,B11100000}
                                       ,{B00000000,B00000111,B00000000,B11100000,B00100000,B00100000,B00100000,B00100000}
                                     };
+/*
 const PROGMEM byte BITMAP_ALPHA[7][8]  = {
                                      {B00000000,B00000000,B00000000,B11100000,B10100000,B11100000,B10100000,B10100111}
                                     ,{B00000000,B00000000,B00000000,B11100000,B10100000,B11000000,B10100111,B11100000}
@@ -89,6 +90,7 @@ const PROGMEM byte BITMAP_ALPHA[7][8]  = {
                                     ,{B00000000,B00000000,B00000111,B11100000,B10000000,B11000000,B10000000,B10000000}
                                     ,{B00000000,B00000111,B00000000,B11100000,B10000000,B10000000,B10100000,B11100000}
                                   };
+*/
 const PROGMEM byte BITMAP_ALGORITHMS[4][8]  = {
                                         {B01000001,B10010000,B00000100,B01010000,B01000010,B01001000,B01000001,B01000100}
                                       , {B00100001,B01000010,B00000100,B11101000,B00100000,B11100001,B10000010,B11100100}
@@ -100,6 +102,29 @@ const PROGMEM byte BITMAP_VOICES[2][8]  = {
                                         {B11110000,B00000000,B00000000,B10101000,B10101000,B10101000,B01001000,B01001000}
                                       , {B00001111,B00000000,B00000000,B10101110,B10100010,B10101110,B01001000,B01001110}
 };
+
+const PROGMEM byte BITMAP_ALPHA[7][8]  = {
+                                     {B00000000,B00000000,B00000000,B11100000,B10100000,B11100000,B10100000,B10100000}
+                                    ,{B00000000,B00000000,B00000000,B11100000,B10100000,B11000000,B10100000,B11100000}
+                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10000000,B10000000,B11100000}
+                                    ,{B00000000,B00000000,B00000000,B11000000,B10100000,B10100000,B10100000,B11000000}
+                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B11100000,B10000000,B11100000}
+                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B11100000,B10000000,B10000000}
+                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10100000,B10100000,B11100000}
+                                      };
+
+
+const PROGMEM byte BITMAP_NUMERALS_RHS[7][8]  = {
+                                    {B00000000,B00000000,B00000000,B00001110,B00001010,B00001010,B00001010,B00001110}
+                                    ,{B00000000,B00000000,B00000000,B00000100,B00001100,B00000100,B00000100,B00000100}
+                                    ,{B00000000,B00000000,B00000000,B00001110,B00000010,B00001110,B00001000,B00001110}
+                                    ,{B00000000,B00000000,B00000000,B00001110,B00000010,B00000110,B00000010,B00001110}
+                                    ,{B00000000,B00000000,B00000000,B00001010,B00001010,B00001110,B00000010,B00000010}
+                                    ,{B00000000,B00000000,B00000000,B00001110,B00001000,B00001110,B00000010,B00001110}
+                                    ,{B00000000,B00000000,B00000000,B00001110,B00001000,B00001110,B00001010,B00001110}
+                                      };
+
+
 
 
 byte firstTimeStart = true;
@@ -122,39 +147,6 @@ uint8_t bitsLastParamLock;
 uint32_t lastUpdateMicros;
 
 
-inline uint8_t getLastButtonState(uint8_t buttonIndex)
-{
-  return (bitsLastButton >> buttonIndex) & 1;
-}
-
-inline void setLastButtonState(uint8_t buttonIndex, uint8_t value)
-{
-  if (value)
-  {
-    bitsLastButton |= 1 << buttonIndex;
-  }
-  else
-  {
-    bitsLastButton &= ~(1 << buttonIndex);  
-  }
-}
-
-inline uint8_t getCurrentButtonState(uint8_t buttonIndex)
-{
-  return (bitsCurrentButton >> buttonIndex) & 1;
-}
-
-inline void setCurrentButtonState(uint8_t buttonIndex, uint8_t value)
-{
-  if (value)
-  {
-    bitsCurrentButton |= 1 << buttonIndex;
-  }
-  else
-  {
-    bitsCurrentButton &= ~(1 << buttonIndex);  
-  }
-}
 
 
 /*
@@ -184,7 +176,9 @@ byte updateCounter = 0;
 
 
 // MOZZI variables
-#define CONTROL_RATE 64   // reduce this from 256 to save processor 
+// original had at 256 but as CPU got tight had to reduce it
+// needs to be at least 128. 64Hz means incoming sync pulses are regularly missed between updates.
+#define CONTROL_RATE 128   
  
 
 MutatingFM          voice0;
@@ -363,49 +357,42 @@ void updateControl()
 
   updateCounter++;
 
-  // do this every time to ensure sync
+  // check for incoming sync trigger and if necessary update output sync
+  // do every update to ensure minimum sync jitter 
   updateSyncTrigger();
 
-  // update sequencer returns true if the seqeuncer has moved to next step
+  // update sequencer returns true if the sequencer has moved to next step
   if (updateSequencer())
   {
     sequenceUpdated = true;
     //only update the display once per sequencer step    
     updateDisplay();
 
-    // if the sequencer is on an even step - output a sync pulse
+    // check to see if sequencer should update the output sync pulse
     if (sequencer.outputSyncPulse())
     {
       outputSyncPulse();
     }
 
   }
+  // check controls once every INTERFACE_UPDATE_DIVIDER steps for efficiency
+  // don't update these if the sequencer has updated as that is expensive
+  else if(updateCounter % INTERFACE_UPDATE_DIVIDER_ANALOG == 0)
+  {
+    // now check analog controls
+    updateAnalogControls();
+  
+  }
+  // never check both analog and digital controls in the same step to causing buffer underflows
+  else if(updateCounter % INTERFACE_UPDATE_DIVIDER_DIGITAL == 0)
+  {
+    // check button controls first to ensure interface mode is correctly set
+    updateButtonControls();
 
-    // check to see if the output sync pulse needs to be pulled low
-    if (syncOutputTimer.ready())
-    {
-      digitalWrite(PIN_SYNC_OUT, LOW);
-    }
-
-
-    // check controls once every INTERFACE_UPDATE_DIVIDER steps for efficiency
-    if(updateCounter % INTERFACE_UPDATE_DIVIDER_ANALOG == 0)
-    {
-      // now check analog controls
-      updateAnalogControls();
-    
-    }
-
-    // never check both analog and digital controls in the same step
-    else if(updateCounter % INTERFACE_UPDATE_DIVIDER_DIGITAL == 0)
-    {
-      // check button controls first to ensure interface mode is correctly set
-      updateButtonControls();
-
-    }
+  }
   
 
-  if(updateCounter % 2 == 0)
+  if(updateCounter % 3 == 0)
   {
     //update display of LFO modulation at higher rate than rest of display
     //take 270 micros. maybe leave out
@@ -442,10 +429,14 @@ void updateLFOModulationDisplay()
 {
   if (!firstTimeStart && settingDisplayTimer.ready())
   {
+    ledDisplay.setRowPixels(LFO_TRACK_0_DISPLAY_ROW, 1 << (voice0.getLFOValue() >> 5));
+    ledDisplay.setRowPixels(LFO_TRACK_1_DISPLAY_ROW, 1 << (voice1.getLFOValue() >> 5));
+    /*
     ledDisplay.drawLineH(LFO_TRACK_0_DISPLAY_ROW, 0, 8, false);
     ledDisplay.drawLineH(LFO_TRACK_1_DISPLAY_ROW, 0, 8, false);
     ledDisplay.setPixel(scaleAnalogInput(voice0.getLFOValue()*4,8), LFO_TRACK_0_DISPLAY_ROW, true);
     ledDisplay.setPixel(scaleAnalogInput(voice1.getLFOValue()*4,8), LFO_TRACK_1_DISPLAY_ROW, true);
+    */
     ledDisplay.refresh();
   }
 }
@@ -510,6 +501,15 @@ int updateSequencer()
  */
 void outputSyncPulse()
 {
+  static uint32_t lastSyncOutTimeMicros;
+  static uint32_t thisSyncOutTimeMicros;
+
+  thisSyncOutTimeMicros = mozziMicros();
+  Serial.print(F("lastSyncOutTimeMicros = "));
+  Serial.println(thisSyncOutTimeMicros - lastSyncOutTimeMicros);
+  lastSyncOutTimeMicros = thisSyncOutTimeMicros;
+  
+
   syncOutputTimer.start(TIMER_SYNC_PULSE_OUTPUT_MILLIS);
   digitalWrite(PIN_SYNC_OUT,  HIGH);
 }
@@ -657,7 +657,8 @@ void getParameterLocks()
 
 /*----------------------------------------------------------------------------------------------------------
  * updateSyncTrigger
- * check for sync trigger and update sequencer
+ * check for incoming sync trigger and update sequencer
+ * also check to see if output sync trigger needs to be pulled low
  *----------------------------------------------------------------------------------------------------------
  */
 void updateSyncTrigger()
@@ -679,7 +680,69 @@ void updateSyncTrigger()
     iLastTrigger = iTrigger;
   }
 
+  // check to see if the output sync pulse needs to be pulled low
+  if (syncOutputTimer.ready())
+  {
+    digitalWrite(PIN_SYNC_OUT, LOW);
+  }
   
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * getLastButtonState
+ * returns the last state for the given button 
+ * uses a bitfield to compress 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline uint8_t getLastButtonState(uint8_t buttonIndex)
+{
+  return (bitsLastButton >> buttonIndex) & 1;
+}
+
+/*----------------------------------------------------------------------------------------------------------
+ * getCurrentButtonState
+ * returns the current state for the given button 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline uint8_t getCurrentButtonState(uint8_t buttonIndex)
+{
+  return (bitsCurrentButton >> buttonIndex) & 1;
+}
+
+/*----------------------------------------------------------------------------------------------------------
+ * setLastButtonState
+ * sets the last state for the given button 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline void setLastButtonState(uint8_t buttonIndex, uint8_t value)
+{
+  if (value)
+  {
+    bitsLastButton |= 1 << buttonIndex;
+  }
+  else
+  {
+    bitsLastButton &= ~(1 << buttonIndex);  
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * setCurrentButtonState
+ * sets the current state for the given button 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline void setCurrentButtonState(uint8_t buttonIndex, uint8_t value)
+{
+  if (value)
+  {
+    bitsCurrentButton |= 1 << buttonIndex;
+  }
+  else
+  {
+    bitsCurrentButton &= ~(1 << buttonIndex);  
+  }
 }
 
 
@@ -801,8 +864,7 @@ void updateButtonControls()
         break;
       case INTERFACE_MODE_SHIFT:    
         sequencer.setOctave((sequencer.getOctave() + 1) % 7);
-        displaySettingIcon(BITMAP_NUMERALS[sequencer.getOctave()]);
-
+        displayTonicIcon();
         //updateTonic(-1);
         break;
     }
@@ -1021,7 +1083,7 @@ inline void updateAnalogControls()
               voices[controlSynthVoice]->setParam(SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH,iCurrentAnalogValue[ANALOG_INPUT_LFO]);
               break;
             case INTERFACE_MODE_SHIFT:  
-              voices[controlSynthVoice]->setLFOFrequency((float)scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_LFO],512,100,5000)/(float)100.0);
+              voices[controlSynthVoice]->setLFOFrequency((float)scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_LFO],512,300,3000)/(float)100.0);
               break;
           }
           
@@ -1130,7 +1192,8 @@ void updateTonic(int incr)
   tonicIndex = (tonicIndex + incr) % 7;
   
   sequencer.setTonic(tonicNotes[tonicIndex]);
-  displaySettingIcon(BITMAP_ALPHA[getMidiNoteIconIndex(sequencer.getTonic())]);
+  displayTonicIcon();
+
 }
 
 
@@ -1294,6 +1357,31 @@ void displaySettingIcon(const byte* bitmap)
   for (byte i = 0; i < 8; i++) 
   {  
     bitmapRAM[i] = pgm_read_byte_near(bitmap + i);
+  }
+
+  ledDisplay.displayIcon(&bitmapRAM[0]);
+  settingDisplayTimer.start(DISPLAY_SETTING_CHANGE_PERSIST_MILLIS);
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * displayTonicIcon
+ * OR's the alpha note name with the numeric octave to create a tonic icon eg G3
+ *----------------------------------------------------------------------------------------------------------
+ */
+void displayTonicIcon()
+{
+  byte bitmapRAM[8];
+  const byte* alphaBitmap;
+  const byte* octaveBitmap;
+
+  octaveBitmap  = BITMAP_NUMERALS[sequencer.getOctave()];
+  alphaBitmap   = BITMAP_ALPHA[getMidiNoteIconIndex(sequencer.getTonic())];
+
+  for (byte i = 0; i < 8; i++) 
+  {  
+    bitmapRAM[i] = pgm_read_byte_near(alphaBitmap + i) | (pgm_read_byte_near(octaveBitmap + i) >> 4);
   }
 
   ledDisplay.displayIcon(&bitmapRAM[0]);
