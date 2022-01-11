@@ -9,20 +9,22 @@
 #include <IntMap.h>
 #include "avSource.h"
 
+//making LFO update rate lower than control rate to save processing.  places upper limit on LFO frequency, probably LFO_OSCILLATOR_UPDATE_RATE/2 Hz
+#define LFO_OSCILLATOR_UPDATE_RATE 64
 
 // voice 1
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> carrier1(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> modulator1(SIN2048_DATA);
 ADSR <CONTROL_RATE, CONTROL_RATE> envelopeAmp1;
 ADSR <CONTROL_RATE, CONTROL_RATE> envelopeMod1;
-Oscil <SIN2048_NUM_CELLS, CONTROL_RATE> lfo1(SIN2048_DATA);
+Oscil <SIN2048_NUM_CELLS, LFO_OSCILLATOR_UPDATE_RATE> lfo1(SIN2048_DATA); 
 
 // voice 2
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE> carrier2(SIN2048_DATA);
 Oscil <SIN2048_NUM_CELLS, AUDIO_RATE>modulator2(SIN2048_DATA);
 ADSR <CONTROL_RATE, CONTROL_RATE> envelopeAmp2;
 ADSR <CONTROL_RATE, CONTROL_RATE> envelopeMod2;
-Oscil <SIN2048_NUM_CELLS, CONTROL_RATE> lfo2(SIN2048_DATA);
+Oscil <SIN2048_NUM_CELLS, LFO_OSCILLATOR_UPDATE_RATE> lfo2(SIN2048_DATA);  
 
 
 MutatingFM::MutatingFM()
@@ -31,7 +33,7 @@ MutatingFM::MutatingFM()
   setOscillator(0);
   setFreqs(33);
   updateCount = 0;
-    envelopeMod->setADLevels(255,0);
+  envelopeMod->setADLevels(255,0);
 
 
   param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH] = 0;
@@ -263,7 +265,7 @@ void MutatingFM::setFreqs(uint8_t midiNote)
       break;
 
     case FM_MODE_FREE:
-      modulationFrequency = (uint32_t)param[SYNTH_PARAMETER_MOD_RATIO] << 19; //0-1023 << 20 into a Q16n16 value = 0-16000hz
+      modulationFrequency = (uint32_t)param[SYNTH_PARAMETER_MOD_RATIO] << 17; //0-1023 << 17 into a Q16n16 value = 0-2000hz
       break;
   }
 
@@ -396,13 +398,10 @@ void MutatingFM::setParam(uint8_t paramIndex, uint16_t newValue)
         break;
 
       case SYNTH_PARAMETER_ENVELOPE_ATTACK:
-//        envelopeMod->setAttackTime(param[SYNTH_PARAMETER_ENVELOPE_ATTACK]);
         envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,lastNoteLength,50);
         break;
 
       case SYNTH_PARAMETER_ENVELOPE_DECAY:
-
-//        envelopeMod->setDecayTime(param[SYNTH_PARAMETER_ENVELOPE_DECAY]);
         envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,lastNoteLength,50);
         break;
 
@@ -424,6 +423,7 @@ uint16_t MutatingFM::getParam(uint8_t paramIndex)
 void MutatingFM::toggleFMMode()
 {
   fmMode = (fmMode + 1) % MAX_FM_MODES;
+  setFreqs(0);
 }
 
 uint8_t MutatingFM::getFMMode()

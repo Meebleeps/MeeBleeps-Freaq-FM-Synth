@@ -69,10 +69,12 @@ void MutatingSequencerMultiTrack::nextStep(bool restart)
   if (restart)
   {
     for (uint8_t i=0; i < MAX_SEQUENCER_TRACKS; i++) currentTrackStep[i] = 0; 
+    duckingCounter = 0;
   }
   else
   {
     for (uint8_t i=0; i < MAX_SEQUENCER_TRACKS; i++) currentTrackStep[i] = ++currentTrackStep[i] % trackSequenceLength[i];
+    duckingCounter++;
   }
 
   #ifndef ENABLE_MIDI_OUTPUT
@@ -153,7 +155,18 @@ byte MutatingSequencerMultiTrack::getCurrentStep(byte track)
  */
 void MutatingSequencerMultiTrack::setParameterLock(byte channel, int value)
 {
-  parameterLocks[channel][currentTrackStep[0]] = value;
+  uint8_t recordStep;
+
+  if (trackSequenceLength[1] > trackSequenceLength[0])
+  {
+    recordStep = currentTrackStep[1];
+  }
+  else
+  {
+    recordStep = currentTrackStep[0];
+  }
+
+  parameterLocks[channel][recordStep] = value;
 }
 
 
@@ -175,6 +188,7 @@ int MutatingSequencerMultiTrack::getParameterLock(byte channel)
  */
 uint16_t MutatingSequencerMultiTrack::getParameterLock(byte channel, byte track, byte step)
 {
+  // todo: return parameter lock per track
   return parameterLocks[channel][step];
 }
 
@@ -293,12 +307,12 @@ void MutatingSequencerMultiTrack::mutateSequenceArp()
   int8_t startOctave;
   uint8_t startNote;
 
-  int8_t seqStep;
+  uint8_t seqStep;
   uint8_t seqNote;
-  uint8_t stepSize;
   uint8_t runLength;
-  int8_t runDirection;
-  
+  uint8_t runDirection;
+  uint8_t stepSize;
+ 
 
   // include the default mutation
   mutateSequenceDefault();
@@ -345,16 +359,6 @@ void MutatingSequencerMultiTrack::mutateSequenceArp()
  */
 void MutatingSequencerMultiTrack::mutateSequenceArp2()
 {
-  int8_t startStep;
-  int8_t startOctave;
-  uint8_t startNote;
-
-  int8_t seqStep;
-  uint8_t seqNote;
-  uint8_t stepSize;
-  uint8_t runLength;
-  int8_t runDirection;
-
   for (uint8_t i = 0; i < trackSequenceLength[0]; i++)
   {
     notes[i] = tonicNote + (12*octave) + scaleNotes[i % (min(trackSequenceLength[0],scaleNoteCount))];
@@ -370,7 +374,7 @@ void MutatingSequencerMultiTrack::mutateSequenceArp2()
 void MutatingSequencerMultiTrack::mutateSequenceDrone()
 {
 
-  notes[0] = tonicNote;
+  notes[0] = tonicNote + (12*octave);
 
   for (int i=1; i < MAX_SEQUENCE_LENGTH; i++)
   {

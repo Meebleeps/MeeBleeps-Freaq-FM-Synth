@@ -36,7 +36,7 @@ MutatingSequencer::MutatingSequencer()
 
   for (uint8_t i = 0; i < MAX_SEQUENCE_LENGTH; i++)
   {
-    for (uint8_t m = 0; m < 6; m++)
+    for (uint8_t m = 0; m < MAX_PARAMETER_LOCKS; m++)
     {
       parameterLocks[m][i] = 0;
     }
@@ -93,6 +93,7 @@ void MutatingSequencer::start()
   #endif
   running             = true;
   ignoreNextSyncPulse = true;
+  duckingCounter      = 0;
   //nextStep(true);
 }
 
@@ -422,7 +423,7 @@ void MutatingSequencer::initialiseScale(int scaleMode)
       scaleNotes[4] = 0;
       scaleNotes[5] = 7;
       scaleNotes[6] = 8;
-      scaleNotes[6] = 8;
+      scaleNotes[7] = 8;
       scaleNoteCount = 8;
       break;
 
@@ -484,6 +485,7 @@ void MutatingSequencer::nextStep(bool restart)
   else
   {
     currentStep = ++currentStep % sequenceLength;
+    duckingCounter++;
   }
   #ifndef ENABLE_MIDI_OUTPUT
   //Serial.print(F("nextStep()  step="));
@@ -597,6 +599,8 @@ void MutatingSequencer::syncPulse(int stepsPerClick)
     stepTimer.start(0);   
   
   }
+  //Serial.print(F("timeSinceLastSyncPulseMicros = "));
+  //Serial.println(timeSinceLastSyncPulseMicros);
 }
 
 

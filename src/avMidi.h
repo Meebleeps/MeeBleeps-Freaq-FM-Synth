@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#define ENABLE_MIDI_OUTPUT
+//#define ENABLE_MIDI_OUTPUT
 
  
 // plays a MIDI note. 

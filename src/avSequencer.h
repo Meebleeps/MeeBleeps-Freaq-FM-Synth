@@ -43,7 +43,7 @@
 #define AUDIO_OUTPUT_LATENCY_COMPENSATION_MICROS 8000
 #define SYNC_STEPS_PER_PULSE 2
 #define SYNC_STEPS_PER_TAP 4
-#define MAX_PARAMETER_LOCKS 6
+#define MAX_PARAMETER_LOCKS 5
 
 
 //#define SEQUENCER_TESTMODE
@@ -135,8 +135,10 @@ class MutatingSequencer
     byte retrigStep = 0;
 
     byte currentNote = 0;
-    byte currentStep = 0;                    
+    byte currentStep = 0;
 
+    //TODO: change to store these in uint8_t to halve space, then can store 2 tracks of param locks in same space (with reduced resolution) 
+    // parameter  values to get compressed to 8 bits on storage and expanded back out to 10 bits on retrival
     int parameterLocks[MAX_PARAMETER_LOCKS][MAX_SEQUENCE_LENGTH];
 
     //byte syncPulseSteps;
@@ -161,6 +163,7 @@ class MutatingSequencer
 
     ADSR <CONTROL_RATE, CONTROL_RATE> duckingEnvelope;
     int duckingAmount;
+    byte duckingCounter;
     
   private:
     bool _debugOutput;
@@ -170,7 +173,6 @@ class MutatingSequencer
     bool syncPulseLive;
     uint32_t syncPulseCount;
 
-    byte duckingCounter;
 
     bool ignoreNextSyncPulse;
     
