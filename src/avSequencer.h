@@ -43,7 +43,14 @@
 #define AUDIO_OUTPUT_LATENCY_COMPENSATION_MICROS 8000
 #define SYNC_STEPS_PER_PULSE 2
 #define SYNC_STEPS_PER_TAP 4
-#define MAX_PARAMETER_LOCKS 5
+
+#define MAX_PARAMETER_LOCKS 6
+#define PARAM_LOCK_CHANNEL_0  0
+#define PARAM_LOCK_CHANNEL_1  1
+#define PARAM_LOCK_CHANNEL_2  2
+#define PARAM_LOCK_CHANNEL_3  3
+#define PARAM_LOCK_CHANNEL_4  4
+#define PARAM_LOCK_CHANNEL_5  5
 
 
 //#define SEQUENCER_TESTMODE
@@ -118,6 +125,8 @@ class MutatingSequencer
     void setAlgorithm(uint8_t newValue);
     void nextAlgorithm();
     
+    uint8_t isRunning();
+
   protected:
     byte mutationProbability;
     byte noteProbability;

@@ -11,7 +11,10 @@
 #include <EventDelay.h>
 #include <MozziGuts.h>
 #include <Oscil.h>
-#include <tables/sin2048_int8.h> // sine table for oscillator
+#include <tables/sin2048_int8.h> // sine table for oscillators & LFO
+#include <tables/saw2048_int8.h> // saw table for LFO
+#include "revsaw2048_int8.h" // reverse saw table for LFO
+#include "whitenoise2048_int8.h" // noise table for LFO
 #include <mozzi_fixmath.h>
 #include <ADSR.h>
 
@@ -34,6 +37,10 @@
 #define SYNTH_PARAMETER_ENVELOPE_SHAPE        5
 #define SYNTH_PARAMETER_ENVELOPE_ATTACK     7
 #define SYNTH_PARAMETER_ENVELOPE_DECAY      8
+#define SYNTH_PARAMETER_NOTE_DECAY          -2  // this isn't implemented in the synth voice - it's in the sequencer, probably should be though
+#define SYNTH_PARAMETER_UNKNOWN             -1
+
+
 
 #define SYNTH_PARAMETER_OSC2TUNE          0
 
@@ -42,6 +49,7 @@
 #define FM_MODE_LINEAR_LOW  2
 #define FM_MODE_FREE        3
 #define MAX_FM_MODES        4
+#define MAX_LFO_MODES       4
 
 // increase for wider LFO depth range
 // LFO depth will be multiplied by 2^n using a bitshift
@@ -104,6 +112,10 @@ class MutatingFM : public MutatingSource
 
     void toggleFMMode();
     uint8_t getFMMode();
+
+    void toggleLFOMode();
+    uint8_t getLFOMode();
+
   protected:
     
     // for FM oscillator
@@ -117,6 +129,7 @@ class MutatingFM : public MutatingSource
     uint8_t  masterGain;
     uint8_t lastLFOValue;
     uint8_t fmMode;
+    uint8_t lfoMode;
 
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* carrier;
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* modulator;

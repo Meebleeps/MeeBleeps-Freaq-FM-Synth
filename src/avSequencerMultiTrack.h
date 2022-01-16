@@ -41,6 +41,8 @@ class MutatingSequencerMultiTrack : MutatingSequencer
     using MutatingSequencer::setScale;
     using MutatingSequencer::setOctave;
     using MutatingSequencer::getOctave;
+    using MutatingSequencer::isRunning;
+    
 
     void setParameterLock(byte channel, int value);
     int  getParameterLock(byte channel);

@@ -796,6 +796,11 @@ uint16_t MutatingSequencer::getNextNoteLength()
 }
 
 
+uint8_t MutatingSequencer::isRunning()
+{
+  return running;
+}
+
 
 void MutatingSequencer::setScatterProbability(byte newProbability)
 {

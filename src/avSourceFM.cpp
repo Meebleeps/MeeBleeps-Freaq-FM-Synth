@@ -431,6 +431,38 @@ uint8_t MutatingFM::getFMMode()
   return fmMode;
 }
 
+void MutatingFM::toggleLFOMode()
+{
+  lfoMode = (lfoMode + 1) % MAX_LFO_MODES;
+  
+  switch (lfoMode)
+  {
+    case 0: 
+      lfo->setTable(SIN2048_DATA);
+      break;
+
+    case 1: 
+      lfo->setTable(SAW2048_DATA);
+      break;
+
+    case 2: 
+      lfo->setTable(REVSAW2048_DATA);
+      break;
+
+    case 3: 
+      lfo->setTable(WHITENOISE2048_DATA);
+      break;
+
+    default:
+      lfo->setTable(SIN2048_DATA);
+  }
+}
+
+uint8_t MutatingFM::getLFOMode()
+{
+  return lfoMode;
+}
+
 int MutatingFM::mutate()
 {
   //

@@ -30,8 +30,8 @@
 #define SEQUENCER_TRACK_0_DISPLAY_ROW_1   5
 #define SEQUENCER_TRACK_1_DISPLAY_ROW_0   6
 #define SEQUENCER_TRACK_1_DISPLAY_ROW_1   7
-#define LFO_TRACK_0_DISPLAY_ROW           2
-#define LFO_TRACK_1_DISPLAY_ROW           3
+#define LFO_TRACK_0_DISPLAY_ROW           1
+#define LFO_TRACK_1_DISPLAY_ROW           1
 
 #define MAX_ANALOG_INPUTS               8
 #define MAX_ANALOG_VALUE                1023
@@ -65,10 +65,16 @@
 #define MOTION_RECORD_REC   1
 #define MOTION_RECORD_CLEAR 2
 
+// MOZZI variables
+// original had at 256 but as CPU got tight had to reduce it
+// needs to be at least 128. 64Hz means incoming sync pulses are regularly missed between updates.
+#define CONTROL_RATE 128   
+
 // todo:  decrease INTERFACE_UPDATE_DIVIDER  if controls are externally modulated via CV voltage inputs
 #define INTERFACE_UPDATE_DIVIDER_ANALOG 5
 #define INTERFACE_UPDATE_DIVIDER_DIGITAL 7
 #define INTERFACE_UPDATE_DIVIDER_LFO 2
+#define INTERFACE_UPDATE_DIVIDER_DISPLAY 32
 
 const PROGMEM byte BITMAP_MEEBLEEPS[]  = {B00011000,B01111110,B11011011,B11011011,B11011011,B11011011,B11000011,B00000110};
 
@@ -104,6 +110,12 @@ const PROGMEM byte BITMAP_ALPHA[7][8]  = {
                                     ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10100000,B10100000,B11100000}
                                       };
 
+const PROGMEM byte BITMAP_LFOMODE[4][8]  = {
+                                    {B00000000,B01100000,B10010000,B10010000,B00001001,B00001001,B00000110,B00000000}
+                                    , {B00000000,B10000011,B10000101,B10001001,B10010001,B10100001,B11000001,B00000000}
+                                    , {B00000000,B11000001,B10100001,B10010001,B10001001,B10000101,B10000011,B00000000}
+                                    , {B00000000,B10010001,B00001000,B00100010,B10000100,B00010001,B01000100,B00000000}
+                                    };
 
 byte firstTimeStart = true;
 byte iTrigger = 1;      
@@ -153,11 +165,8 @@ uint32_t lastUpdateMicros;
 byte updateCounter = 0;
 
 
-// MOZZI variables
-// original had at 256 but as CPU got tight had to reduce it
-// needs to be at least 128. 64Hz means incoming sync pulses are regularly missed between updates.
-#define CONTROL_RATE 128   
- 
+
+
 
 MutatingFM          voice0;
 MutatingFM          voice1;
@@ -328,10 +337,12 @@ void initialiseSequencer()
  */
 void updateControl()
 {
+  uint8_t doDisplayUpdate = false;
 
   lastUpdateMicros = micros();
-
   updateCounter++;
+
+
 
   // check for incoming sync trigger and if necessary update output sync
   // do every update to ensure minimum sync jitter 
@@ -347,8 +358,10 @@ void updateControl()
       outputSyncPulse();
     }
 
-    //only update the display once per sequencer step    
-    updateDisplay();
+    //update the display once per sequencer step   
+    // but do the display update at the end of updateControl so that any latency is introduced after all critical functions are processed
+
+    doDisplayUpdate = true; 
   }
   // check controls once every INTERFACE_UPDATE_DIVIDER steps for efficiency
   // don't update these if the sequencer has updated as that is expensive
@@ -369,6 +382,10 @@ void updateControl()
   {
     //update display of LFO modulation at higher rate than rest of display
     updateLFOModulationDisplay();
+  }
+  else 
+  {
+    doDisplayUpdate = (updateCounter % INTERFACE_UPDATE_DIVIDER_DISPLAY == 0);
   }
 
   #ifndef ENABLE_MIDI_OUTPUT
@@ -392,19 +409,31 @@ void updateControl()
   Serial.print(sequenceUpdated);
   Serial.println();
   */
- #endif
+  #endif
+
+  // do the display update last so that any latency is introduced after the notes are updated
+  if (doDisplayUpdate)
+  {
+    updateDisplay();
+  }
+
 }
 
 
 
+/*----------------------------------------------------------------------------------------------------------
+ * updateLFOModulationDisplay
+ * displays the current position of the 2 LFOs using 4 LEDs each
+ *----------------------------------------------------------------------------------------------------------
+ */
 void updateLFOModulationDisplay()
 {
   if (!firstTimeStart && settingDisplayTimer.ready())
   {
-    // divide  LFO value of 0-255 to range 0-7 by right-shift 5 bits, then right-shift 128 by that value to get the correct pixel bitfield
+    // divide LFO value of 0-255 to range 0-3 by right-shift 6 bits, then right-shift 128 by that value to get the correct pixel bitfield
     // originally used floating point maths - very slow.
-    ledDisplay.setRowPixels(LFO_TRACK_0_DISPLAY_ROW, 128 >> (voice0.getLFOValue() >> 5));
-    ledDisplay.setRowPixels(LFO_TRACK_1_DISPLAY_ROW, 128 >> (voice1.getLFOValue() >> 5));
+    ledDisplay.setRowPixels(LFO_TRACK_0_DISPLAY_ROW, (128 >> (voice0.getLFOValue() >> 6)) | (8 >> (voice1.getLFOValue() >> 6)));
+    
     ledDisplay.refresh();
   }
 }
@@ -414,6 +443,7 @@ void updateLFOModulationDisplay()
 /*----------------------------------------------------------------------------------------------------------
  * updateSequencer
  * updates sequencer
+ * returns true if the sequencer advances a step
  *----------------------------------------------------------------------------------------------------------
  */
 int updateSequencer()
@@ -472,14 +502,16 @@ int updateSequencer()
  */
 void outputSyncPulse()
 {
+  /*
+  DEBUG only
   static uint32_t lastSyncOutTimeMicros;
   static uint32_t thisSyncOutTimeMicros;
 
   thisSyncOutTimeMicros = mozziMicros();
-  //Serial.print(F("lastSyncOutTimeMicros = "));
-  //Serial.println(thisSyncOutTimeMicros - lastSyncOutTimeMicros);
+  Serial.print(F("lastSyncOutTimeMicros = "));
+  Serial.println(thisSyncOutTimeMicros - lastSyncOutTimeMicros);
   lastSyncOutTimeMicros = thisSyncOutTimeMicros;
-  
+  */
 
   syncOutputTimer.start(TIMER_SYNC_PULSE_OUTPUT_MILLIS);
   digitalWrite(PIN_SYNC_OUT,  HIGH);
@@ -487,15 +519,14 @@ void outputSyncPulse()
 
 
 /*----------------------------------------------------------------------------------------------------------
- * updateSequencerModulation
+ * getParameterLocks
  * updates source parameters based on stored modulation sequence
- * parameter locks are stored in the first track only
+ * parameter locks are only availble for first track only.
  *----------------------------------------------------------------------------------------------------------
  */
 void getParameterLocks()
 {
   uint16_t  thisParamLock;
-  uint16_t  lastParamLock;
   uint8_t   thisStep;
   int8_t    synthParamIndex;
 
@@ -572,54 +603,101 @@ void getParameterLocks()
     //}
   }
 
-
-  /*
-  if (sequencer.getParameterLock(0) != 0)
-  {
-    sequencer.setNextNoteLength(sequencer.getParameterLock(0));
-  }
-  else
-  {
-    updateNoteDecay(true);
-  }
-
-  if (sequencer.getParameterLock(1) != 0)
-  {
-    voices[0]->setParam(1,sequencer.getParameterLock(1));
-  }
-  else
-  {
-    updateOscillatorDetune(true);
-  }
-
-  if (sequencer.getParameterLock(2) != 0)
-  {
-    voices[0]->setParam(2,sequencer.getParameterLock(2));
-  }
-  else
-  {
-    updateFilterCutoff(true);
-  }
-
-  if (sequencer.getParameterLock(3) != 0)
-  {
-    voices[0]->setParam(3,sequencer.getParameterLock(3));
-  }
-  else
-  {
-    updateFilterResonance(true);
-  }
-
-  if (sequencer.getParameterLock(4) != 0)
-  {
-    voices[0]->setParam(4,sequencer.getParameterLock(4));
-  }
-  else
-  {
-    updateFilterShape(true);
-  }
-  */
 }
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * setParameterLock
+ * saves the given parameter value onto a modulation channel
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline void setParameterLock(int8_t paramChannel, uint16_t value)
+{
+  switch (motionRecordMode)
+  {
+    case MOTION_RECORD_REC:
+        sequencer.setParameterLock(paramChannel, value);
+        #ifndef ENABLE_MIDI_OUTPUT
+        //Serial.println(F("setParameterLock(0)"));
+        #endif
+        break;
+
+    case MOTION_RECORD_CLEAR:
+        sequencer.clearAllParameterLocks(paramChannel);
+        #ifndef ENABLE_MIDI_OUTPUT
+        //Serial.println(F("Clear ParameterLock(0)"));
+        #endif
+        break;
+
+    case MOTION_RECORD_NONE:
+        // do nothing 
+        break;
+  }
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * getParameterLockChannel
+ * returns the sequencer modulation channel for a given analog control index 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline int8_t getParameterLockChannel(uint8_t analogControlIndex)
+{
+  switch(analogControlIndex)
+  {
+    case ANALOG_INPUT_MOD_AMOUNT:    return PARAM_LOCK_CHANNEL_0;       
+    case ANALOG_INPUT_DECAY:         return PARAM_LOCK_CHANNEL_1;
+    case ANALOG_INPUT_MOD_RATIO:     return PARAM_LOCK_CHANNEL_2;
+    case ANALOG_INPUT_MOD_ENVELOPE1: return PARAM_LOCK_CHANNEL_3;
+    case ANALOG_INPUT_MOD_ENVELOPE2: return PARAM_LOCK_CHANNEL_4;
+    case ANALOG_INPUT_LFO:           return PARAM_LOCK_CHANNEL_5;
+    default:  return -1;
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * getParameterLockControl
+ * returns the analog control index for a given sequencer modulation channel 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline int8_t getParameterLockControl(uint8_t paramChannelIndex)
+{
+  switch(paramChannelIndex)
+  {
+    case PARAM_LOCK_CHANNEL_0: return ANALOG_INPUT_MOD_AMOUNT;
+    case PARAM_LOCK_CHANNEL_1: return ANALOG_INPUT_DECAY;
+    case PARAM_LOCK_CHANNEL_2: return ANALOG_INPUT_MOD_RATIO;
+    case PARAM_LOCK_CHANNEL_3: return ANALOG_INPUT_MOD_ENVELOPE1;
+    case PARAM_LOCK_CHANNEL_4: return ANALOG_INPUT_MOD_ENVELOPE2;
+    case PARAM_LOCK_CHANNEL_5: return ANALOG_INPUT_LFO;
+    default:  return -1;
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * getParameterLockSynthParam
+ * returns the sytnh parameter for a given sequencer modulation channel 
+ *----------------------------------------------------------------------------------------------------------
+ */
+inline int8_t getParameterLockSynthParam(uint8_t paramChannelIndex)
+{
+  switch(paramChannelIndex)
+  {
+    case PARAM_LOCK_CHANNEL_0: return SYNTH_PARAMETER_MOD_AMOUNT;
+    case PARAM_LOCK_CHANNEL_1: return SYNTH_PARAMETER_NOTE_DECAY;
+    case PARAM_LOCK_CHANNEL_2: return SYNTH_PARAMETER_MOD_RATIO;
+    case PARAM_LOCK_CHANNEL_3: return SYNTH_PARAMETER_ENVELOPE_DECAY;
+    case PARAM_LOCK_CHANNEL_4: return SYNTH_PARAMETER_ENVELOPE_ATTACK;
+    case PARAM_LOCK_CHANNEL_5: return SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH;
+    default:  return SYNTH_PARAMETER_UNKNOWN;
+  }
+}
+
+
 
 
 
@@ -771,20 +849,6 @@ void updateButtonControls()
     #endif
   }
 
-  /*
-  if (iCurrentButton[BUTTON_INPUT_RETRIG] != iLastButton[BUTTON_INPUT_RETRIG])
-  {
-    switch(interfaceMode)
-    {
-      case INTERFACE_MODE_NORMAL:   
-        sequencer.setRetrigger(iCurrentButton[BUTTON_INPUT_RETRIG] == HIGH);
-        break;
-      case INTERFACE_MODE_SHIFT:    
-        sequencer.setRetrigger(iCurrentButton[BUTTON_INPUT_RETRIG] == HIGH); // todo: change algorithm?
-        break;
-    }
-  }
-  */
   if (getCurrentButtonState(BUTTON_INPUT_VOICE) != getLastButtonState(BUTTON_INPUT_VOICE))
   {
     switch(interfaceMode)
@@ -798,11 +862,18 @@ void updateButtonControls()
       case INTERFACE_MODE_SHIFT:    
         if (getCurrentButtonState(BUTTON_INPUT_VOICE) == HIGH)
         {
-          voices[controlSynthVoice]->toggleFMMode();
-          //todo: display icon for current FM mode
-          displaySettingIcon(BITMAP_NUMERALS[voices[controlSynthVoice]->getFMMode()]);
-
-
+          if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
+          {
+            // TODO: if user if holding down FUNC & REC when they hit VOICE, then change LFO mode
+            voices[controlSynthVoice]->toggleLFOMode();
+            displaySettingIcon(BITMAP_LFOMODE[voices[controlSynthVoice]->getLFOMode()]);
+          }
+          else
+          {
+            voices[controlSynthVoice]->toggleFMMode();
+            //todo: display icon for current FM mode
+            displaySettingIcon(BITMAP_NUMERALS[voices[controlSynthVoice]->getFMMode()]);
+          }
         }     
 
         break;
@@ -852,6 +923,7 @@ void updateButtonControls()
         break;
     }
   }
+  /*
 
   for (uint8_t i=0; i<MAX_BUTTON_INPUTS; i++)
   {
@@ -871,13 +943,9 @@ void updateButtonControls()
     
   }
 
-
-  bitsLastButton = bitsCurrentButton;
-  //setLastButtonState() iLastButton[i] = getCurrentButtonState(i);
-  
-
   ledDisplay.refresh();
-  
+  */
+  bitsLastButton = bitsCurrentButton;
 
 }
 
@@ -1040,8 +1108,18 @@ inline void updateAnalogControls()
           break;
 
         case ANALOG_INPUT_STEPCOUNT:
+          switch (interfaceMode)
+          {
+            case INTERFACE_MODE_NORMAL: 
+              sequencer.setSequenceLength(controlSynthVoice, scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_STEPCOUNT],16) + 1);
+              break;
+            // if shift, change both sequences to the current knob setting to keep them in sync
+            case INTERFACE_MODE_SHIFT:  
+              sequencer.setSequenceLength(SEQUENCER_TRACK_0, scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_STEPCOUNT],16) + 1);
+              sequencer.setSequenceLength(SEQUENCER_TRACK_1, scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_STEPCOUNT],16) + 1);
+              break;
+          }
           
-          sequencer.setSequenceLength(controlSynthVoice, scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_STEPCOUNT],16) + 1);
           
          break;
 
@@ -1052,9 +1130,11 @@ inline void updateAnalogControls()
               voices[controlSynthVoice]->setParam(SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH,iCurrentAnalogValue[ANALOG_INPUT_LFO]);
               break;
             case INTERFACE_MODE_SHIFT:  
-              voices[controlSynthVoice]->setLFOFrequency((float)scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_LFO],512,300,3000)/(float)100.0);
+              // set LFO frequency between 0 - 1000Hz
+              voices[controlSynthVoice]->setLFOFrequency((float)scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_LFO]+1,512,300,3000)/(float)300.0);
               break;
           }
+          setParameterLock(getParameterLockChannel(ANALOG_INPUT_LFO), iCurrentAnalogValue[ANALOG_INPUT_LFO]);
           
           break;
 
@@ -1097,73 +1177,6 @@ inline void updateAnalogControls()
   }
   
 }
-
-
-inline void setParameterLock(int8_t paramChannel, uint16_t value)
-{
-  switch (motionRecordMode)
-  {
-    case MOTION_RECORD_REC:
-        sequencer.setParameterLock(paramChannel, value);
-        #ifndef ENABLE_MIDI_OUTPUT
-        //Serial.println(F("setParameterLock(0)"));
-        #endif
-        break;
-
-    case MOTION_RECORD_CLEAR:
-        sequencer.clearAllParameterLocks(paramChannel);
-        #ifndef ENABLE_MIDI_OUTPUT
-        //Serial.println(F("Clear ParameterLock(0)"));
-        #endif
-        break;
-
-    case MOTION_RECORD_NONE:
-        // do nothing 
-        break;
-  }
-}
-
-
-inline int8_t getParameterLockChannel(uint8_t analogControlIndex)
-{
-  switch(analogControlIndex)
-  {
-    case ANALOG_INPUT_MOD_AMOUNT:    return 0;       
-    case ANALOG_INPUT_DECAY:         return 1;
-    case ANALOG_INPUT_MOD_RATIO:     return 2;
-    case ANALOG_INPUT_MOD_ENVELOPE1: return 3;
-    case ANALOG_INPUT_MOD_ENVELOPE2: return 4;
-    default:  return -1;
-  }
-}
-
-
-inline int8_t getParameterLockControl(uint8_t paramChannelIndex)
-{
-  switch(paramChannelIndex)
-  {
-    case 0: return ANALOG_INPUT_MOD_AMOUNT;
-    case 1: return ANALOG_INPUT_DECAY;
-    case 2: return ANALOG_INPUT_MOD_RATIO;
-    case 3: return ANALOG_INPUT_MOD_ENVELOPE1;
-    case 4: return ANALOG_INPUT_MOD_ENVELOPE2;
-    default:  return -1;
-  }
-}
-
-inline int8_t getParameterLockSynthParam(uint8_t paramChannelIndex)
-{
-  switch(paramChannelIndex)
-  {
-    case 0: return SYNTH_PARAMETER_MOD_AMOUNT;
-    case 1: return -2;
-    case 2: return SYNTH_PARAMETER_MOD_RATIO;
-    case 3: return SYNTH_PARAMETER_ENVELOPE_DECAY;
-    case 4: return SYNTH_PARAMETER_ENVELOPE_ATTACK;
-    default:  return -1;
-  }
-}
-
 
 
 
@@ -1270,13 +1283,16 @@ void updateDisplay()
   if (settingDisplayTimer.ready())
   {
     currentNote[SEQUENCER_TRACK_0] = sequencer.getCurrentNote(SEQUENCER_TRACK_0);
-    currentNote[SEQUENCER_TRACK_1] = sequencer.getCurrentNote(SEQUENCER_TRACK_1);
     currentStep[SEQUENCER_TRACK_0] = sequencer.getCurrentStep(SEQUENCER_TRACK_0);
+    currentNote[SEQUENCER_TRACK_1] = sequencer.getCurrentNote(SEQUENCER_TRACK_1);
     currentStep[SEQUENCER_TRACK_1] = sequencer.getCurrentStep(SEQUENCER_TRACK_1);
     
     // set current voice display
     ledDisplay.setRowPixels(0,controlSynthVoice == SEQUENCER_TRACK_0 ? 240 : 15);
  
+    //blank out the old LFO row to clear any old icons - this row is currently otherwise unused
+    ledDisplay.setRowPixels(3, 0);
+
 
     // clear sequencer step rows
     ledDisplay.setRowPixels(SEQUENCER_TRACK_0_DISPLAY_ROW_0, 0);
@@ -1303,7 +1319,7 @@ void updateDisplay()
     }  
 
     //display trigger
-    ledDisplay.setPixel(7, 1, iTrigger == HIGH);
+    ledDisplay.setPixel(7, 0, iTrigger == HIGH);
 
     displaySequenceLength();
 
