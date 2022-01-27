@@ -382,24 +382,44 @@ void MutatingSequencerMultiTrack::mutateSequenceDrone()
   }
 }
 
+
+/*---------------------------------------------------------------------------------------------------------------
+ * getSequenceLength
+ *---------------------------------------------------------------------------------------------------------------
+ */
 byte MutatingSequencerMultiTrack::getSequenceLength()
 {
   return trackSequenceLength[0];  
 }
 
 
+/*---------------------------------------------------------------------------------------------------------------
+ * getSequenceLength
+ * returns the length of the given track
+ *---------------------------------------------------------------------------------------------------------------
+ */
 byte MutatingSequencerMultiTrack::getSequenceLength(byte track)
 {
   return trackSequenceLength[track];  
 }
 
 
+/*---------------------------------------------------------------------------------------------------------------
+ * setSequenceLength
+ * sets the length of track 0
+ *---------------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencerMultiTrack::setSequenceLength(byte newLength)
 {
   setSequenceLength(0, newLength);
 }
 
 
+/*---------------------------------------------------------------------------------------------------------------
+ * setSequenceLength
+ * sets the length of the given track
+ *---------------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencerMultiTrack::setSequenceLength(byte track, byte newLength)
 {
   if(newLength > 0 && newLength <= MAX_SEQUENCE_LENGTH && trackSequenceLength[track] != newLength)

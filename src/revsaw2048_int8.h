@@ -1,3 +1,10 @@
+/*
+  revsaw2018_int8.h - defines a table representing a reverse-saw waveform
+
+  used for the LFO to replace the sin/saw/random
+  
+  can be replaced with any values you like, but must be 2048 cells to match the other tables
+*/
 #ifndef REVSAW2048_H_
 #define REVSAW2048_H_
 

@@ -4,7 +4,7 @@
  * Defines a multitrack generative sequencer with multiple generative algorithms, musical scale quantisation,
  * variable sequence length (up to 16 steps) and multiple parameter-lock (motion-sequencing) channels
  * 
- * (C) 2021 Meebleeps
+ * (C) 2021-2022 Meebleeps
 *-----------------------------------------------------------------------------------------------------------
 */
 
@@ -32,7 +32,6 @@ class MutatingSequencerMultiTrack : MutatingSequencer
     using MutatingSequencer::toggleStart;
     using MutatingSequencer::nextAlgorithm;
     using MutatingSequencer::getAlgorithm;
-    using MutatingSequencer::setDuckingAmount;
     using MutatingSequencer::setMutationProbability;
     using MutatingSequencer::setNoteProbability;
     using MutatingSequencer::getTonic;

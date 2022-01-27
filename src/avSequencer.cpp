@@ -4,7 +4,7 @@
  * Implements a generative sequencer with multiple generative algorithms, musical scale quantisation,
  * variable sequence length (up to 16 steps) and multiple parameter-lock (motion-sequencing) channels
  * 
- * (C) 2021 Meebleeps
+ * (C) 2021-2022 Meebleeps
 *-----------------------------------------------------------------------------------------------------------
 */
 #include <mozzi_rand.h>
@@ -12,6 +12,7 @@
 
 #include "Arduino.h"
 #include "avSequencer.h"
+
 
 /*----------------------------------------------------------------------------------------------------------
  * MutatingSequencer::MutatingSequencer()
@@ -50,9 +51,6 @@ MutatingSequencer::MutatingSequencer()
   mutationProbability = 0;
   noteProbability      = 70;
   tonicProbability    = 30;
-  rachetProbability   = 30;
-  scatterProbability  = 0;
-  shufflePct          = 50;
   sequenceLength      = 16;
   bpm                 = 130;
   currentNote         = tonicNote;
@@ -70,10 +68,6 @@ MutatingSequencer::MutatingSequencer()
   
   initialiseScale(SCALEMODE_PENTA);
   newSequence(sequenceLength);
-
-  duckingEnvelope.setTimes(80,1000,1000,5);
-  duckingEnvelope.setADLevels(0,255);
-  duckingCounter = 0;
 
   _debugOutput        = true;
   printParameters();
@@ -93,7 +87,6 @@ void MutatingSequencer::start()
   #endif
   running             = true;
   ignoreNextSyncPulse = true;
-  duckingCounter      = 0;
   //nextStep(true);
 }
 
@@ -604,6 +597,11 @@ void MutatingSequencer::syncPulse(int stepsPerClick)
 }
 
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::testSequence()
+ * initialises the sequencer with a new test sequence
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::testSequence()
 {
   for (uint8_t i = 0; i < MAX_SEQUENCE_LENGTH; i++)
@@ -614,6 +612,11 @@ void MutatingSequencer::testSequence()
 
 
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::newSequence()
+ * initialises the sequencer with a new random sequence
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::newSequence(byte seqLength)
 {
   if (seqLength > 0 && seqLength < MAX_SEQUENCE_LENGTH)
@@ -759,22 +762,34 @@ void MutatingSequencer::mutateSequenceArp()
 
 }
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::mutateMutation()
+ * not used
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::mutateMutation()
 {
-  
   noteProbability      = 50 + rand(50);
   mutationProbability = 10 + rand(20);
-  rachetProbability   = rand(40);
-  //shufflePct          = 35 + rand(35);
-
-  if (shufflePct < 50) shufflePct = 50;
 }
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::mutateNoteLength()
+ * not used
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::mutateNoteLength()
 {
   setNextNoteLength(rand(500));
 }
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::setNextNoteLength()
+ * set the next note length
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::setNextNoteLength(uint16_t newNoteLength)
 {
   if (newNoteLength > 0 and newNoteLength <= 65000 && newNoteLength != nextStepNoteLength)
@@ -789,49 +804,44 @@ void MutatingSequencer::setNextNoteLength(uint16_t newNoteLength)
 }
 
 
-
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::getNextNoteLength()
+ * return the next note length
+ *----------------------------------------------------------------------------------------------------------
+ */
 uint16_t MutatingSequencer::getNextNoteLength()
 {
   return nextStepNoteLength;
 }
 
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::isRunning()
+ * return true if the sequencer is running
+ *----------------------------------------------------------------------------------------------------------
+ */
 uint8_t MutatingSequencer::isRunning()
 {
   return running;
 }
 
 
-void MutatingSequencer::setScatterProbability(byte newProbability)
-{
-  if(newProbability >= 0 && newProbability <= 100 && newProbability != scatterProbability)
-  {
-    scatterProbability = newProbability;
-    #ifndef ENABLE_MIDI_OUTPUT
-    Serial.print(F("scatterProbability="));
-    Serial.println(scatterProbability);
-    #endif
-
-  }
-
-}
-
-byte MutatingSequencer::getScatterProbability()
-{
-  return scatterProbability;
-}
-
-bool MutatingSequencer::isScattered()
-{
-  return rand(100) < scatterProbability;
-}
-
-
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::getSequenceLength()
+ * return the sequence length
+ *----------------------------------------------------------------------------------------------------------
+ */
 byte MutatingSequencer::getSequenceLength()
 {
   return sequenceLength;  
 }
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::setSequenceLength()
+ * set the sequence length
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::setSequenceLength(byte newLength)
 {
   if(newLength > 0 && newLength <= MAX_SEQUENCE_LENGTH && sequenceLength != newLength)
@@ -844,6 +854,13 @@ void MutatingSequencer::setSequenceLength(byte newLength)
   }
 }
 
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::setNoteProbability()
+ * set the note probability
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::setNoteProbability(byte newProbability)
 {
   if (newProbability >= 0 && newProbability <= 100 && newProbability != noteProbability)
@@ -856,12 +873,21 @@ void MutatingSequencer::setNoteProbability(byte newProbability)
   }
 }
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::getNoteProbability()
+ * gets the note probability
+ *----------------------------------------------------------------------------------------------------------
+ */
 byte MutatingSequencer::getNoteProbability()
 {
   return noteProbability;
 }
 
-
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::setMutationProbability()
+ * gets the mutation probability
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingSequencer::setMutationProbability(byte newProbability)
 {
   if (newProbability >= 0 && newProbability <= 100 && newProbability != mutationProbability)
@@ -875,6 +901,11 @@ void MutatingSequencer::setMutationProbability(byte newProbability)
   }
 }
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencer::getMutationProbability()
+ * gets the mutation probability
+ *----------------------------------------------------------------------------------------------------------
+ */
 byte MutatingSequencer::getMutationProbability()
 {
   return mutationProbability;
@@ -910,34 +941,7 @@ void MutatingSequencer::printParameters()
 }
 
 
-byte MutatingSequencer::getDuckingEnvelope()
-{
-  return duckingEnvelope.next();
-}
 
-
-int MutatingSequencer::getDuckingAmount()
-{
-  return duckingAmount;
-}
-
-    
-void MutatingSequencer::setDuckingAmount(int newDuckingAmount)
-{
-  if (newDuckingAmount > 255)
-  {
-    duckingAmount = 255;
-  }
-  else if (newDuckingAmount < 0)
-  {
-    duckingAmount = 0;  
-  }
-  else
-  {
-    duckingAmount = newDuckingAmount;      
-  }
-}
-    
 
 
 void MutatingSequencer::print()

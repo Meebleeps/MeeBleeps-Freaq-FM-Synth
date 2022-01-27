@@ -9,7 +9,7 @@
 #include <IntMap.h>
 #include "avSource.h"
 
-//making LFO update rate lower than control rate to save processing.  places upper limit on LFO frequency, probably LFO_OSCILLATOR_UPDATE_RATE/2 Hz
+//making LFO update rate lower than control rate to save processing.  places upper limit on LFO frequency
 #define LFO_OSCILLATOR_UPDATE_RATE 64
 
 // voice 1
@@ -27,20 +27,31 @@ ADSR <CONTROL_RATE, CONTROL_RATE> envelopeMod2;
 Oscil <SIN2048_NUM_CELLS, LFO_OSCILLATOR_UPDATE_RATE> lfo2(SIN2048_DATA);  
 
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingFM::MutatingFM()
+ * create a new instance
+ *----------------------------------------------------------------------------------------------------------
+ */
 MutatingFM::MutatingFM()
 {
-  masterGain = 255;
+  masterGain          = 255;
+  masterGainBitShift  = 8;
   setOscillator(0);
   setFreqs(33);
   updateCount = 0;
   envelopeMod->setADLevels(255,0);
-
-
   param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH] = 0;
-
 }
 
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingFM::setOscillator()
+ * links this object instance to a given statically defined oscillator, envelope etc
+ * terrible design pattern but I had compilation issues when these variables were declared in the class def where they belong
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingFM::setOscillator(uint8_t oscIndex)
 {
   switch (oscIndex)
@@ -66,6 +77,14 @@ void MutatingFM::setOscillator(uint8_t oscIndex)
   lfo->setFreq((float)0.02);
 }
 
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingFM::noteOff()
+ * turns the note on 
+ * currently velocity is ignored
+ *----------------------------------------------------------------------------------------------------------
+ */
 int MutatingFM::noteOn(byte pitch, byte velocity, unsigned int length)
 {
   #ifndef ENABLE_MIDI_OUTPUT
@@ -86,9 +105,6 @@ int MutatingFM::noteOn(byte pitch, byte velocity, unsigned int length)
     envelopeAmp->noteOn(false); 
 
     // setup modulation envelope attack, decay time based on parameters
-    //envelopeMod->setADLevels(param[SYNTH_PARAMETER_MOD_AMOUNT],min(param[SYNTH_PARAMETER_FILTER_SUSTAIN],param[SYNTH_PARAMETER_MOD_AMOUNT]));
-    //envelopeMod->setTimes(param[SYNTH_PARAMETER_ENVELOPE_ATTACK],param[SYNTH_PARAMETER_ENVELOPE_DECAY],length,50);
-  
     if (param[SYNTH_PARAMETER_ENVELOPE_ATTACK] < MIN_MODULATION_ENV_TIME)
     {
       envelopeMod->setTimes(0,param[SYNTH_PARAMETER_ENVELOPE_DECAY]+MIN_MODULATION_ENV_TIME,length,50);
@@ -125,6 +141,11 @@ int MutatingFM::noteOn(byte pitch, byte velocity, unsigned int length)
 }
 
 
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingFM::noteOff()
+ * turns the note off
+ *----------------------------------------------------------------------------------------------------------
+ */
 int MutatingFM::noteOff()
 {
   envelopeAmp->noteOff(); 
@@ -140,14 +161,12 @@ int MutatingFM::noteOff()
  */
 inline int MutatingFM::updateAudio()
 {
-  /*
-  int16_t mix;
-  mix = carrier->phMod(modulatorAmount * modulator->next() >> 8);
-  mix = (mix * currentGain) >> 8;
-  return MonoOutput::fromNBit(9, mix);
-  */
-  return MonoOutput::fromNBit(9, (((int16_t)carrier->phMod(modulatorAmount * modulator->next() >> 8) * currentGain) >> 8));
+  // TODO:  ignores master gain due to audio glitches when shifting by a variable rather than a constant
+  //        optimise and reinstate
+  //return MonoOutput::fromNBit(9, (((int16_t)carrier->phMod(modulatorAmount * modulator->next() >> 8) * currentGain) >> masterGainBitShift));
 
+  // return audio without master gain
+  return MonoOutput::fromNBit(9, (((int16_t)carrier->phMod(modulatorAmount * modulator->next() >> 8) * currentGain) >> 8));
 }
 
 
@@ -182,18 +201,6 @@ inline void MutatingFM::updateControl()
     // store LFO value for use in displaying the lfo position onscreen.
     lastLFOValue    = lfo->next()+128;
 
-    //modulatorAmount = (uint32_t)(envelopeMod->next() * lastLFOValue) << 3; //(baseModAmount + lfoModAmount + envModAmount) << 16;
-
-    // modulatorAmount is a Q16n16 unsigned fixed-point value. 1.0 = 1<<16.
-    // musically interesting range seems to be ~0-10
-
-    //modulation amount = MOD_ENVELOPE * ENVELOPE_AMOUNT + LFO*LFO_AMOUNT
-
-    /*
-    modulatorAmount = (((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT] * ((uint32_t)envelopeMod->next())) << MOD_DEPTH_MULTIPLIER_ENV)
-                      + ((((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH] * ((uint32_t)lastLFOValue)) >> 1))// MOD_DEPTH_MULTIPLIER_LFO))
-                      ;
-    */
     modulatorAmount = ((((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT])          * (uint32_t)envelopeMod->next())
                       + (((uint32_t)param[SYNTH_PARAMETER_MOD_AMOUNT_LFODEPTH]) * (uint32_t)lastLFOValue)
                       );
@@ -209,11 +216,21 @@ inline void MutatingFM::updateControl()
 /*----------------------------------------------------------------------------------------------------------
  * MutatingFM::setGain()
  * sets the gain 
+ * stores it as a 0-255 byte and also as a bitshift value of gain reduction 8 (max volume) - 17 (off)
  *----------------------------------------------------------------------------------------------------------
  */
 void MutatingFM::setGain(byte gain)
 {
   masterGain = gain;
+
+  if (masterGain == 0)
+  {
+    masterGainBitShift = 17;
+  }
+  else
+  {
+    masterGainBitShift = 8 + (((uint16_t)264 - (uint16_t)masterGain) >> 5);
+  }
 }
 
 
@@ -450,7 +467,7 @@ void MutatingFM::toggleLFOMode()
       break;
 
     case 3: 
-      lfo->setTable(WHITENOISE2048_DATA);
+      lfo->setTable(PSEUDORANDOM2048_DATA);
       break;
 
     default:

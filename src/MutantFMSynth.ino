@@ -30,8 +30,11 @@
 #define SEQUENCER_TRACK_0_DISPLAY_ROW_1   5
 #define SEQUENCER_TRACK_1_DISPLAY_ROW_0   6
 #define SEQUENCER_TRACK_1_DISPLAY_ROW_1   7
-#define LFO_TRACK_0_DISPLAY_ROW           1
-#define LFO_TRACK_1_DISPLAY_ROW           1
+#define LFO_TRACK_0_DISPLAY_ROW           2
+#define LFO_TRACK_1_DISPLAY_ROW           2
+#define TRIGGER_DISPLAY_ROW               0
+#define TRIGGER_DISPLAY_COL               7
+#define CURRENT_VOICE_DISPLAY_ROW         1
 
 #define MAX_ANALOG_INPUTS               8
 #define MAX_ANALOG_VALUE                1023
@@ -117,6 +120,13 @@ const PROGMEM byte BITMAP_LFOMODE[4][8]  = {
                                     , {B00000000,B10010001,B00001000,B00100010,B10000100,B00010001,B01000100,B00000000}
                                     };
 
+const PROGMEM byte BITMAP_FMMODE[4][8]  = {
+                                    {B00000011,B00000010,B00001110,B00001000,B00111000,B00100000,B11100000,B10000000}
+                                    ,{B00000001,B00000010,B00000100,B00001000,B00010000,B00100000,B01000000,B10000000}
+                                    ,{B00000000,B00000000,B00000000,B00000001,B00000110,B00011000,B01100000,B10000000}
+                                    ,{B00000000,B00000000,B00000000,B11111111,B00000000,B00000000,B00000000,B00000000}
+                                    };
+
 byte firstTimeStart = true;
 byte iTrigger = 1;      
 byte iLastTrigger = 0;
@@ -127,40 +137,15 @@ byte motionRecordMode = MOTION_RECORD_NONE;
 int iLastAnalogValue[MAX_ANALOG_INPUTS]    = {0,0,0,0,0,0,0,0};
 int iCurrentAnalogValue[MAX_ANALOG_INPUTS] = {0,0,0,0,0,0,0,0};
 
-//byte iCurrentButton[MAX_BUTTON_INPUTS];
-//byte iLastButton[MAX_BUTTON_INPUTS];
-
+// save space for digital inputs - use a bit rather than a byte per button 
 uint8_t bitsLastButton;
 uint8_t bitsCurrentButton;
 uint8_t bitsLastParamLock;
 
+// time since the last updateAudio()
 uint32_t lastUpdateMicros;
 
 
-
-
-/*
-  on start
-    for each analog value set targetvalue[i][currentmode] = current_value
-
-
-  on mode change
-  
-  // store knob positions of old mode
-  for each analog value set targetvalue[i][oldmode] = current_value
-
-    // if current value is within +- ANALOG_TRACK_TOLERANCE then track the knob
-    set trackknob[i] = abs(current_value[i] -targetvalue[i][newmode]) < ANALOG_TRACK_TOLERANCE;
-
-    set targetcrossingdirection = if current_value[i] < targetvalue[i][newmode] then 1 else -1 end
-
-
-  on knob value change
-    // if we are not already trakcing the knob and current value is within +- ANALOG_TRACK_TOLERANCE then start tracking the knob
-    if !trackknob[i] set trackknob[i] = abs(current_value[i] -targetvalue[i][newmode]) < ANALOG_TRACK_TOLERANCE;
-
-
-*/
 
 byte updateCounter = 0;
 
@@ -208,6 +193,7 @@ void setup()
 
 /*----------------------------------------------------------------------------------------------------------
  * debugPrintMemoryUsage
+ * does nothing
  *----------------------------------------------------------------------------------------------------------
  */
 void debugPrintMemoryUsage()
@@ -330,7 +316,8 @@ void initialiseSequencer()
 /*----------------------------------------------------------------------------------------------------------
  * updateControl
  * called by Mozzi Library on CONTROL_RATE frequency
- * every INTERFACE_UPDATE_DIVIDER steps, check controls
+ * spreads out control logic updates so that we don't bog down the CPU
+ *
  * every step - check for sync trigger and update sequencer
  * if this gets delayed, note on/off commands will drift
  *----------------------------------------------------------------------------------------------------------
@@ -521,7 +508,7 @@ void outputSyncPulse()
 /*----------------------------------------------------------------------------------------------------------
  * getParameterLocks
  * updates source parameters based on stored modulation sequence
- * parameter locks are only availble for first track only.
+ * parameter locks are only available for first track only.
  *----------------------------------------------------------------------------------------------------------
  */
 void getParameterLocks()
@@ -859,6 +846,7 @@ void updateButtonControls()
           updateSynthControl();
         }
         break;
+
       case INTERFACE_MODE_SHIFT:    
         if (getCurrentButtonState(BUTTON_INPUT_VOICE) == HIGH)
         {
@@ -872,15 +860,13 @@ void updateButtonControls()
           {
             voices[controlSynthVoice]->toggleFMMode();
             //todo: display icon for current FM mode
-            displaySettingIcon(BITMAP_NUMERALS[voices[controlSynthVoice]->getFMMode()]);
+            displaySettingIcon(BITMAP_FMMODE[voices[controlSynthVoice]->getFMMode()]);
           }
         }     
 
         break;
     }
   }
-
-
   
   if (getCurrentButtonState(BUTTON_INPUT_START) != getLastButtonState(BUTTON_INPUT_START) && getCurrentButtonState(BUTTON_INPUT_START) == HIGH)
   {
@@ -890,7 +876,8 @@ void updateButtonControls()
         startStopSequencer();     
         break;
       case INTERFACE_MODE_SHIFT:    
-        sequencer.syncPulse(SYNC_STEPS_PER_TAP);  // todo: send tap tempo message to the sequencer
+        // send tap tempo message to the sequencer
+        sequencer.syncPulse(SYNC_STEPS_PER_TAP);  
         break;
     }
   }
@@ -902,10 +889,10 @@ void updateButtonControls()
       case INTERFACE_MODE_NORMAL:   
         updateTonic(1);   
         break;
+
       case INTERFACE_MODE_SHIFT:    
         sequencer.setOctave((sequencer.getOctave() + 1) % 7);
         displayTonicIcon();
-        //updateTonic(-1);
         break;
     }
   }
@@ -915,16 +902,17 @@ void updateButtonControls()
     switch(interfaceMode)
     {
       case INTERFACE_MODE_NORMAL:   
-        // todo: update scale 
         updateScale();
         break;
+
       case INTERFACE_MODE_SHIFT:    
         updateAlgorithm();
         break;
     }
   }
+  
   /*
-
+  DEBUG ONLY
   for (uint8_t i=0; i<MAX_BUTTON_INPUTS; i++)
   {
     // debug only
@@ -1057,8 +1045,20 @@ inline void updateAnalogControls()
       switch(i)
       {
         case ANALOG_INPUT_DECAY: 
-          updateNoteDecay(false);
-          setParameterLock(getParameterLockChannel(ANALOG_INPUT_DECAY), iCurrentAnalogValue[ANALOG_INPUT_DECAY]);
+          switch (interfaceMode)
+          {
+            case INTERFACE_MODE_NORMAL: 
+              updateNoteDecay(false);
+              setParameterLock(getParameterLockChannel(ANALOG_INPUT_DECAY), iCurrentAnalogValue[ANALOG_INPUT_DECAY]);
+              break;
+
+            case INTERFACE_MODE_SHIFT:  
+              // shift-decay = volume of voice, so each part can be different volume (or off)
+              // currently MutatingFM.setGain() does nothing
+              // setGain range 0-255
+              voices[controlSynthVoice]->setGain(iCurrentAnalogValue[ANALOG_INPUT_DECAY] >> 2);
+
+          }
           break;
 
         case ANALOG_INPUT_MOD_AMOUNT:
@@ -1113,6 +1113,7 @@ inline void updateAnalogControls()
             case INTERFACE_MODE_NORMAL: 
               sequencer.setSequenceLength(controlSynthVoice, scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_STEPCOUNT],16) + 1);
               break;
+              
             // if shift, change both sequences to the current knob setting to keep them in sync
             case INTERFACE_MODE_SHIFT:  
               sequencer.setSequenceLength(SEQUENCER_TRACK_0, scaleAnalogInput(iCurrentAnalogValue[ANALOG_INPUT_STEPCOUNT],16) + 1);
@@ -1198,13 +1199,11 @@ void updateNoteDecay(bool ignoreRecordMode)
 
 /*----------------------------------------------------------------------------------------------------------
  * updateTonic
+ * sets the tonic to one of the natural notes
  *----------------------------------------------------------------------------------------------------------
  */
 void updateTonic(int incr)
 {
-  // todo: fix this
-
-                        // C  D  E  F  G  A   B  
   int8_t tonicNotes[7] = { 0, 2, 4, 5, 7, 9, 11};
   byte tonicIndex;
   
@@ -1257,11 +1256,11 @@ uint8_t getMidiNoteIconIndex(uint8_t midinote)
 /*----------------------------------------------------------------------------------------------------------
  * updateAudio
  * returns the current source audio to be output on pin 9
+ * mixes the two voices together with simple addition
  *----------------------------------------------------------------------------------------------------------
  */
 int updateAudio()
 {
-//  return MonoOutput::fromNBit(8, voices[0]->updateAudio());
   return MonoOutput::fromNBit(9, voices[0]->updateAudio() + voices[1]->updateAudio());
 }
 
@@ -1288,9 +1287,10 @@ void updateDisplay()
     currentStep[SEQUENCER_TRACK_1] = sequencer.getCurrentStep(SEQUENCER_TRACK_1);
     
     // set current voice display
-    ledDisplay.setRowPixels(0,controlSynthVoice == SEQUENCER_TRACK_0 ? 240 : 15);
+    ledDisplay.setRowPixels(CURRENT_VOICE_DISPLAY_ROW,controlSynthVoice == SEQUENCER_TRACK_0 ? 240 : 15);
  
-    //blank out the old LFO row to clear any old icons - this row is currently otherwise unused
+    //blank out row 0 & 3 to clear any old icons - these rows are currently otherwise unused
+    ledDisplay.setRowPixels(0, 0);
     ledDisplay.setRowPixels(3, 0);
 
 
@@ -1319,7 +1319,7 @@ void updateDisplay()
     }  
 
     //display trigger
-    ledDisplay.setPixel(7, 0, iTrigger == HIGH);
+    ledDisplay.setPixel(TRIGGER_DISPLAY_COL, TRIGGER_DISPLAY_ROW, iTrigger == HIGH);
 
     displaySequenceLength();
 
@@ -1465,6 +1465,7 @@ int scaleAnalogInput(int rawValue, int maxScale)
  * scaleAnalogInput
  * scales an analog input from 0-1023 to 0-maxScale with a non-linear kink at kneeX,kneeY
  * assumes 1000 = max
+ * todo: very inefficient - either don't use it or work out a better way to do it.
  *----------------------------------------------------------------------------------------------------------
  */
 long scaleAnalogInputNonLinear(long rawValue, long kneeX, long kneeY, long maxScale)

@@ -101,10 +101,6 @@ class MutatingSequencer
     void      setNextNoteLength(uint16_t newNoteLength);
     uint16_t  getNextNoteLength();
 
-    void setScatterProbability(byte newScatter);
-    byte getScatterProbability();
-    bool isScattered();
-
     void setNoteProbability(byte newProbability);
     byte getNoteProbability();
 
@@ -117,10 +113,6 @@ class MutatingSequencer
     byte getSequenceLength();
     void setSequenceLength(byte newLength);
 
-    byte getDuckingEnvelope();
-    int  getDuckingAmount();
-    void  setDuckingAmount(int newDuckingAmount);
-    
     uint8_t getAlgorithm();
     void setAlgorithm(uint8_t newValue);
     void nextAlgorithm();
@@ -131,9 +123,6 @@ class MutatingSequencer
     byte mutationProbability;
     byte noteProbability;
     byte tonicProbability;
-    byte rachetProbability;     // not used in final design
-    byte scatterProbability;    // not used in final design
-    byte shufflePct;            // not used in final design
     byte mutationAlgorithm;
 
     byte sequenceLength;
@@ -170,8 +159,6 @@ class MutatingSequencer
     byte scaleNotes[MAX_SCALE_LENGTH];                  
     byte octaveSpread;
 
-    ADSR <CONTROL_RATE, CONTROL_RATE> duckingEnvelope;
-    int duckingAmount;
     byte duckingCounter;
     
   private:

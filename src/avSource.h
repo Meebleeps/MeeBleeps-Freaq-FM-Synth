@@ -1,6 +1,7 @@
 /*
-  avSequencer.h - defines a mutating generative sequencer
-
+  avSource.h - defines a sound source using a virtual base class and a derived class which implements the particular sound source
+   
+  in this case, a 2-operator FM voice with envelope & lfo modulation control
 */
 
 #ifndef avSource_h
@@ -14,7 +15,7 @@
 #include <tables/sin2048_int8.h> // sine table for oscillators & LFO
 #include <tables/saw2048_int8.h> // saw table for LFO
 #include "revsaw2048_int8.h" // reverse saw table for LFO
-#include "whitenoise2048_int8.h" // noise table for LFO
+#include "pseudorandom2048_int8.h" // noise table for LFO
 #include <mozzi_fixmath.h>
 #include <ADSR.h>
 
@@ -127,6 +128,7 @@ class MutatingFM : public MutatingSource
 
     uint8_t  currentGain;
     uint8_t  masterGain;
+    uint8_t masterGainBitShift;
     uint8_t lastLFOValue;
     uint8_t fmMode;
     uint8_t lfoMode;
