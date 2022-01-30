@@ -437,37 +437,123 @@ uint16_t MutatingFM::getParam(uint8_t paramIndex)
 }
 
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * toggleFMMode
+ * Sets the FM ratio mode 
+ * 
+ * FM_MODE_EXPONENTIAL    modulator is a quantized multiple of the carrier, 
+ * FM_MODE_LINEAR_HIGH    modulator is a multiple of the carrier, with high scale
+ * FM_MODE_LINEAR_LOW     modulator is a multiple of the carrier, with low scale
+ * FM_MODE_FREE           modulator is not related to the the carrier
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingFM::toggleFMMode()
 {
   fmMode = (fmMode + 1) % MAX_FM_MODES;
   setFreqs(0);
 }
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * getFMMode
+ * Gets the FM ratio mode 
+ *----------------------------------------------------------------------------------------------------------
+ */
 uint8_t MutatingFM::getFMMode()
 {
   return fmMode;
 }
 
-void MutatingFM::toggleLFOMode()
+
+/*----------------------------------------------------------------------------------------------------------
+ * toggleCarrierWaveform
+ * Sets the carrier waveform 
+ * 
+ * set to WAVEFORM_NULL to switch the carrier off
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingFM::toggleCarrierWaveform()
 {
-  lfoMode = (lfoMode + 1) % MAX_LFO_MODES;
+  carrierWaveform = (carrierWaveform + 1) % MAX_CARRIER_WAVEFORMS;
   
-  switch (lfoMode)
+  switch (carrierWaveform)
   {
-    case 0: 
+    case WAVEFORM_SIN: 
+      carrier->setTable(SIN2048_DATA);
+      break;
+
+    case WAVEFORM_SAW: 
+      carrier->setTable(SAW2048_DATA);
+      break;
+
+    case WAVEFORM_REVSAW: 
+      carrier->setTable(REVSAW2048_DATA);
+      break;
+
+    case WAVEFORM_SQUARE: 
+      carrier->setTable(SQUARE2048_DATA);
+      break;
+
+    case WAVEFORM_PSEUDORANDOM: 
+      carrier->setTable(PSEUDORANDOM2048_DATA);
+      break;
+
+    case WAVEFORM_NULL: 
+      carrier->setTable(NULLWAVEFORM2048_DATA);
+      break;
+
+    default:
+      carrier->setTable(SIN2048_DATA);
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * getCarrierWaveform
+ * Gets the carrier waveform 
+ *----------------------------------------------------------------------------------------------------------
+ */
+uint8_t MutatingFM::getCarrierWaveform()
+{
+  return carrierWaveform;
+}
+
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * toggleLFOWaveform
+ * Sets the LFO waveform 
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingFM::toggleLFOWaveform()
+{
+  lfoWaveform = (lfoWaveform + 1) % MAX_LFO_WAVEFORMS;
+  
+  switch (lfoWaveform)
+  {
+    case WAVEFORM_SIN: 
       lfo->setTable(SIN2048_DATA);
       break;
 
-    case 1: 
+    case WAVEFORM_SAW: 
       lfo->setTable(SAW2048_DATA);
       break;
 
-    case 2: 
+    case WAVEFORM_REVSAW: 
       lfo->setTable(REVSAW2048_DATA);
       break;
 
-    case 3: 
+    case WAVEFORM_SQUARE: 
+      lfo->setTable(SQUARE2048_DATA);
+      break;
+
+    case WAVEFORM_PSEUDORANDOM: 
       lfo->setTable(PSEUDORANDOM2048_DATA);
+      break;    
+      
+    case WAVEFORM_NULL: 
+      lfo->setTable(NULLWAVEFORM2048_DATA);
       break;
 
     default:
@@ -475,11 +561,23 @@ void MutatingFM::toggleLFOMode()
   }
 }
 
-uint8_t MutatingFM::getLFOMode()
+
+/*----------------------------------------------------------------------------------------------------------
+ * getLFOWaveform
+ * Gets the LFO waveform 
+ *----------------------------------------------------------------------------------------------------------
+ */
+uint8_t MutatingFM::getLFOWaveform()
 {
-  return lfoMode;
+  return lfoWaveform;
 }
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * mutate
+ * used to generate randomness in the parameters - not used  
+ *----------------------------------------------------------------------------------------------------------
+ */
 int MutatingFM::mutate()
 {
   //
@@ -489,18 +587,26 @@ int MutatingFM::mutate()
 
 
 
-
+/*----------------------------------------------------------------------------------------------------------
+ * getLFOValue
+ * gets the current LFO value
+ *----------------------------------------------------------------------------------------------------------
+ */
 uint8_t MutatingFM::getLFOValue()
 {
   return lastLFOValue;
 }
 
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * setLFOFrequency
+ * sets the current LFO frequency
+ *----------------------------------------------------------------------------------------------------------
+ */
 void MutatingFM::setLFOFrequency(float freq)
 {
   lfo->setFreq_Q16n16(float_to_Q16n16(freq));
 }
 
-void MutatingFM::setLFODepth(uint8_t depth)
-{
 
-}

@@ -15,7 +15,9 @@
 #include <tables/sin2048_int8.h> // sine table for oscillators & LFO
 #include <tables/saw2048_int8.h> // saw table for LFO
 #include "revsaw2048_int8.h" // reverse saw table for LFO
+#include "square2048_int8.h" // square table for LFO
 #include "pseudorandom2048_int8.h" // noise table for LFO
+#include "nullwaveform2048_int8.h" // zero table for LFO - used to turn carrier off
 #include <mozzi_fixmath.h>
 #include <ADSR.h>
 
@@ -50,7 +52,16 @@
 #define FM_MODE_LINEAR_LOW  2
 #define FM_MODE_FREE        3
 #define MAX_FM_MODES        4
-#define MAX_LFO_MODES       4
+#define MAX_LFO_WAVEFORMS     6
+#define MAX_CARRIER_WAVEFORMS 6
+
+#define WAVEFORM_SIN          0
+#define WAVEFORM_SAW          1
+#define WAVEFORM_REVSAW       2
+#define WAVEFORM_SQUARE       3
+#define WAVEFORM_PSEUDORANDOM 4
+#define WAVEFORM_NULL         5
+
 
 // increase for wider LFO depth range
 // LFO depth will be multiplied by 2^n using a bitshift
@@ -108,14 +119,16 @@ class MutatingFM : public MutatingSource
     void setOscillator(uint8_t oscIndex);
     uint8_t getLFOValue();
     void  setLFOFrequency(float freq);
-    void  setLFODepth(uint8_t depth);
     void setModulationShape(uint16_t newValue);
 
     void toggleFMMode();
     uint8_t getFMMode();
 
-    void toggleLFOMode();
-    uint8_t getLFOMode();
+    void toggleLFOWaveform();
+    uint8_t getLFOWaveform();
+
+    void toggleCarrierWaveform();
+    uint8_t getCarrierWaveform();
 
   protected:
     
@@ -131,7 +144,8 @@ class MutatingFM : public MutatingSource
     uint8_t masterGainBitShift;
     uint8_t lastLFOValue;
     uint8_t fmMode;
-    uint8_t lfoMode;
+    uint8_t lfoWaveform;
+    uint8_t carrierWaveform;
 
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* carrier;
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* modulator;

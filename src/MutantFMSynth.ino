@@ -113,11 +113,14 @@ const PROGMEM byte BITMAP_ALPHA[7][8]  = {
                                     ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10100000,B10100000,B11100000}
                                       };
 
-const PROGMEM byte BITMAP_LFOMODE[4][8]  = {
+const PROGMEM byte BITMAP_WAVEFORMS[6][8]  = {
                                     {B00000000,B01100000,B10010000,B10010000,B00001001,B00001001,B00000110,B00000000}
                                     , {B00000000,B10000011,B10000101,B10001001,B10010001,B10100001,B11000001,B00000000}
                                     , {B00000000,B11000001,B10100001,B10010001,B10001001,B10000101,B10000011,B00000000}
+                                    , {B00000000,B11110000,B10010000,B10010000,B10010001,B00010001,B00011111,B00000000}
                                     , {B00000000,B10010001,B00001000,B00100010,B10000100,B00010001,B01000100,B00000000}
+                                    , {B00000000,B00000000,B00000000,B11111111,B00000000,B00000000,B00000000,B00000000}
+
                                     };
 
 const PROGMEM byte BITMAP_FMMODE[4][8]  = {
@@ -852,9 +855,9 @@ void updateButtonControls()
         {
           if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
           {
-            // TODO: if user if holding down FUNC & REC when they hit VOICE, then change LFO mode
-            voices[controlSynthVoice]->toggleLFOMode();
-            displaySettingIcon(BITMAP_LFOMODE[voices[controlSynthVoice]->getLFOMode()]);
+            // if user if holding down FUNC & REC when they hit VOICE, then change LFO mode
+            voices[controlSynthVoice]->toggleLFOWaveform();
+            displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getLFOWaveform()]);
           }
           else
           {
@@ -891,8 +894,15 @@ void updateButtonControls()
         break;
 
       case INTERFACE_MODE_SHIFT:    
-        sequencer.setOctave((sequencer.getOctave() + 1) % 7);
-        displayTonicIcon();
+        if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
+        {
+          // TODO: if user if holding down FUNC & REC when they hit TONIC, then change the octave of the current voice only
+        }
+        else
+        {
+          sequencer.setOctave((sequencer.getOctave() + 1) % 7);
+          displayTonicIcon();
+        }
         break;
     }
   }
@@ -906,7 +916,17 @@ void updateButtonControls()
         break;
 
       case INTERFACE_MODE_SHIFT:    
-        updateAlgorithm();
+        if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
+        {
+          // TODO: if user if holding down FUNC & REC when they hit SCALES, then change the waveform type for the current voice carrier
+          voices[controlSynthVoice]->toggleCarrierWaveform();
+          displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getCarrierWaveform()]);
+
+        }
+        else
+        {
+          updateAlgorithm();
+        }
         break;
     }
   }
@@ -1183,14 +1203,14 @@ inline void updateAnalogControls()
 
 /*----------------------------------------------------------------------------------------------------------
  * updateNoteDecay
- * 
+ * sets the length of the notes
  *----------------------------------------------------------------------------------------------------------
  */
 void updateNoteDecay(bool ignoreRecordMode)
 {
   uint16_t nextNoteLength;
   
-  nextNoteLength = scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_DECAY], 768, 2048, 10000);
+  nextNoteLength = scaleAnalogInputNonLinear(iCurrentAnalogValue[ANALOG_INPUT_DECAY], 512, 512, 16384);
   sequencer.setNextNoteLength(nextNoteLength);
   
 }
