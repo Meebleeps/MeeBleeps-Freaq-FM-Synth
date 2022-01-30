@@ -1,7 +1,7 @@
-# Meebleeps Mutant FM Mozzi Synth
+# Meebleeps Freaq FM Synth
 ## Arduino Synth with Dual-voice 2OP FM | Generative 2-track Polymetric Sequencer | Mozzi SDK
 
-My second Arduino project is an evolution of the first Mozzi synth build.  This time with 2 2-op FM voices running on a 2-track generative polymetric sequencer built to sync & fit with my Volca collection.
+My second Arduino project is an evolution of my first Mozzi synth build.  This time with dual 2-op FM voices running on a 2-track generative polymetric sequencer built to sync & fit with my Volca collection.
 
 Source released under Creative Commons ttribution-NonCommercial-ShareAlike 4.0
 
