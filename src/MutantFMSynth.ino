@@ -470,6 +470,8 @@ int updateSequencer()
       Serial.write(nextNote[0]-24);
       Serial.write(0x45);
     }
+    #else
+
     #endif
 
 
@@ -897,6 +899,8 @@ void updateButtonControls()
         if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
         {
           // TODO: if user if holding down FUNC & REC when they hit TONIC, then change the octave of the current voice only
+          sequencer.setOctaveOffsetTrack1((sequencer.getOctaveOffsetTrack1() + 1 ) % 4);
+          displaySettingIcon(BITMAP_NUMERALS[sequencer.getOctaveOffsetTrack1()] );
         }
         else
         {

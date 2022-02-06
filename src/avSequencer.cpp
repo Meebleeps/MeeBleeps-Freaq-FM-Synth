@@ -451,7 +451,7 @@ bool MutatingSequencer::update(bool restart)
   
   if (running)
   {
-    if (restart || (running && stepTimer.ready()))
+    if (restart || (stepTimer.ready() || syncPulseLive))
     {
       nextStep(restart);
       processStep = true;
@@ -508,16 +508,17 @@ void MutatingSequencer::setNextStepTimer()
   
   currentStepTimeMicros = mozziMicros();
   
+  #ifndef ENABLE_MIDI_OUTPUT
+  Serial.print(F("step time micros="));
+  Serial.println(currentStepTimeMicros - lastStepTimeMicros);
+  #endif
+
   if(syncPulseLive)
   {
     // this step is the first one after a sync pulse
     // adjust the next step 
 
     timeElapsedSincePulseMicros = currentStepTimeMicros - lastSyncPulseTimeMicros;
-    #ifndef ENABLE_MIDI_OUTPUT
-    //Serial.print(F("timeElapsedSincePulseMicros="));
-    //Serial.print(timeElapsedSincePulseMicros);
-    #endif
 
     if(nextStepTimeMillis*1000 > timeElapsedSincePulseMicros)
     {

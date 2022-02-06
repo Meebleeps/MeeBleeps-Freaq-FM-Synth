@@ -108,7 +108,14 @@ byte MutatingSequencerMultiTrack::getCurrentNote(byte track)
 {
   if (!retrigState)
   {
-    return notes[currentTrackStep[track]];
+    if (track != 0 || octaveOffsetTrack1 == 0)
+    {
+      return notes[currentTrackStep[track]];
+    }
+    else
+    {
+      return notes[currentTrackStep[track]] + (12*octaveOffsetTrack1);
+    }
   }
   else
   {
@@ -145,6 +152,34 @@ byte MutatingSequencerMultiTrack::getCurrentStep(byte track)
   }
   
 }
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::setOctaveOffsetTrack1()
+ * allows the setting of an octave offset for track 0
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingSequencerMultiTrack::setOctaveOffsetTrack1(int8_t offset)
+{
+  if (offset >= -3 && offset <= 3)
+  {
+    octaveOffsetTrack1 = offset;
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * MutatingSequencerMultiTrack::getOctaveOffsetTrack1()
+ * gets  the current playing step
+ *----------------------------------------------------------------------------------------------------------
+ */
+int8_t MutatingSequencerMultiTrack::getOctaveOffsetTrack1()
+{
+  return octaveOffsetTrack1;
+}
+
+
+
+     
 
 
 

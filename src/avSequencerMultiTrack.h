@@ -57,6 +57,9 @@ class MutatingSequencerMultiTrack : MutatingSequencer
     byte getCurrentStep();
     byte getCurrentStep(byte track);
     
+    void    setOctaveOffsetTrack1(int8_t offset);
+    int8_t  getOctaveOffsetTrack1();
+
     byte getSequenceLength();
     byte getSequenceLength(byte track);
 
@@ -77,6 +80,8 @@ class MutatingSequencerMultiTrack : MutatingSequencer
     byte currentTrackNote[MAX_SEQUENCER_TRACKS] = {0,0};   
     byte currentTrackStep[MAX_SEQUENCER_TRACKS] = {0,0};                    
     byte trackSequenceLength[MAX_SEQUENCER_TRACKS] = {16,16};
+    
+    int8_t octaveOffsetTrack1;
 
 };
 
