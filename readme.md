@@ -43,43 +43,32 @@ Source released under Creative Commons ttribution-NonCommercial-ShareAlike 4.0
 ### Buttons
 
 -   Tonic - Select tonic through natural notes A - G
--   [Func] + Tonic - Shift base octave from 0 - 5
--   [Func][Rec] + Tonic - Select octave offset to Track 1 (track 1 & 2 can be 0-4 octaves apart)
-
+    -   [Func] + Tonic - Shift base octave from 0 - 5
+    -   [Func][Rec] + Tonic - Select octave offset to Track 1 (track 1 & 2 can be 0-4 octaves apart)
 -   Scales - Select current musical scale
--   [Func] + Scales - Select current generative algorithm
--   [Func][Rec] + Scales - Select Carrier Waveform for the current voice 
-
+    -   [Func] + Scales - Select current generative algorithm
+    -   [Func][Rec] + Scales - Select Carrier Waveform for the current voice 
 -   Rec + knob - Hold down while moving a knob to record those parameters to the sequence 
--   [Func][Rec] + knob - Hold down while moving a knob to delete the recorded sequence for that parameter 
--   [Func][Rec] + buttons - Access various secondary functions
-
+    -   [Func][Rec] + knob - Hold down while moving a knob to delete the recorded sequence for that parameter 
+    -   [Func][Rec] + buttons - Access various secondary functions
 -   Start - Start or stop the sequencer
--   [Func] + Start - Tap tempo
-
+    -   [Func] + Start - Tap tempo
 -   Voice - Select the active track which can be edited using the parameter inputs
--   [Func] + Voice - Select the FM ratio mode for the current voice
--   [Func][Rec] + Voice - Select the LFO waveform for the current voice 
+    -   [Func] + Voice - Select the FM ratio mode for the current voice
+    -   [Func][Rec] + Voice - Select the LFO waveform for the current voice 
 
 ### Rotary Inputs
 
 -   Mutation - Adjust the likelihood that the sequence will change over time
--   [Func] + Mutation - Adjust the liklihood that any given step will be a note or a rest
-
+    -   [Func] + Mutation - Adjust the liklihood that any given step will be a note or a rest
 -   Population - Adjust the number of steps for the active track
--   [Func] + Population - Adjust the number of steps for all tracks
-
+    -   [Func] + Population - Adjust the number of steps for all tracks
 -   Lifespan - Adjust the length of the notes (for all tracks)
-
 -   Ratio - Select the carrier--to-modulator FM ratio (based on the current FM mode)
-
 -   Wobble - Adjust the amount of LFO to apply to the modulator level for the active track
--   [Func] + Wobble - Adjust the LFO rate for the active track
-
+    -   [Func] + Wobble - Adjust the LFO rate for the active track
 -   Attack - Adjust the attack time for the modulator level envelope
-
 -   Decay - Adjust the decay time for the modulator level envelope
-
 -   Depth - Adjust the amount of envelope to apply to the modulator level for the active track
 
 ## Issues / Limitations
