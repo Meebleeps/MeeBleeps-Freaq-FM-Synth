@@ -1,4 +1,14 @@
-#ifndef ledMatrix_h
+/*----------------------------------------------------------------------------------------------------------
+ * LedMatrix.h
+ * 
+ * Defines an interface to a MAX7219 driving an 8x8 LED matrix
+ * 
+ * Source Code Repository:  https://github.com/Meebleeps/MeeBleeps-Freaq-FM-Synth
+ * Youtube Channel:         https://www.youtube.com/channel/UC4I1ExnOpH_GjNtm7ZdWeWA
+ * 
+ * (C) 2021-2022 Meebleeps
+*-----------------------------------------------------------------------------------------------------------
+*/#ifndef ledMatrix_h
 #define ledMatrix_h
 #include "Arduino.h"
 

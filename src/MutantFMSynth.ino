@@ -1,3 +1,19 @@
+/*----------------------------------------------------------------------------------------------------------
+ * MutantFMSynth.ino
+ * 
+ * Main project file for the Mutant FM Synth. 
+ * 
+ * Instantiates all mutant class objects 
+ * Calls the Mozzi audio hook functions
+ * manages the user interface
+ * 
+ * Source Code Repository:  https://github.com/Meebleeps/MeeBleeps-Freaq-FM-Synth
+ * Youtube Channel:         https://www.youtube.com/channel/UC4I1ExnOpH_GjNtm7ZdWeWA
+ * 
+ * (C) 2021-2022 Meebleeps
+*-----------------------------------------------------------------------------------------------------------
+*/
+
 #include <Arduino.h>
 #include <MozziGuts.h>
 #include <mozzi_rand.h>
@@ -8,7 +24,9 @@
 #include "avSequencerMultiTrack.h"
 #include "avMidi.h"
 #include "LedMatrix.h"
+#include "mutantBitmaps.h"
 #include <avr/pgmspace.h>
+
 
 // define the pins
 #define PIN_SYNC_IN       8
@@ -63,6 +81,7 @@
 #define INTERFACE_MODE_SHIFT  1
 
 #define DISPLAY_SETTING_CHANGE_PERSIST_MILLIS 350
+#define DISPLAY_SETTING_INTENSITY 4
 
 #define MOTION_RECORD_NONE  0
 #define MOTION_RECORD_REC   1
@@ -79,56 +98,6 @@
 #define INTERFACE_UPDATE_DIVIDER_LFO 2
 #define INTERFACE_UPDATE_DIVIDER_DISPLAY 32
 
-const PROGMEM byte BITMAP_MEEBLEEPS[]  = {B00011000,B01111110,B11011011,B11011011,B11011011,B11011011,B11000011,B00000110};
-
-const PROGMEM byte BITMAP_NUMERALS[8][8]  = {
-                                       {B00000000,B00000000,B00000000,B11100000,B10100000,B10100000,B10100000,B11100111}
-                                      ,{B00000000,B00000000,B00000000,B01000000,B01000000,B01000000,B01000111,B01000000}
-                                      ,{B00000000,B00000000,B00000000,B11100000,B00100000,B11100111,B10000000,B11100000}
-                                      ,{B00000000,B00000000,B00000000,B11100000,B00100111,B11100000,B00100000,B11100000}
-                                      ,{B00000000,B00000000,B00000000,B10100111,B10100000,B11100000,B00100000,B00100000}
-                                      ,{B00000000,B00000000,B00000111,B11100000,B10000000,B11100000,B00100000,B11100000}
-                                      ,{B00000000,B00000111,B00000000,B11100000,B10000000,B11100000,B10100000,B11100000}
-                                      ,{B00000000,B00000111,B00000000,B11100000,B00100000,B00100000,B00100000,B00100000}
-                                    };
-const PROGMEM byte BITMAP_ALGORITHMS[4][8]  = {
-                                        {B01000001,B10010000,B00000100,B01010000,B01000010,B01001000,B01000001,B01000100}
-                                      , {B00100001,B01000010,B00000100,B11101000,B00100000,B11100001,B10000010,B11100100}
-                                      , {B00000000,B01111111,B00000000,B11101111,B00100000,B11101111,B00100000,B11100111}
-                                      , {B00100000,B01010000,B00001000,B10100100,B10100010,B11100001,B00101000,B00100100}
-                                      };
-
-const PROGMEM byte BITMAP_VOICES[2][8]  = {
-                                        {B11110000,B00000000,B00000000,B10101000,B10101000,B10101000,B01001000,B01001000}
-                                      , {B00001111,B00000000,B00000000,B10101110,B10100010,B10101110,B01001000,B01001110}
-};
-
-const PROGMEM byte BITMAP_ALPHA[7][8]  = {
-                                     {B00000000,B00000000,B00000000,B11100000,B10100000,B11100000,B10100000,B10100000}
-                                    ,{B00000000,B00000000,B00000000,B11100000,B10100000,B11000000,B10100000,B11100000}
-                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10000000,B10000000,B11100000}
-                                    ,{B00000000,B00000000,B00000000,B11000000,B10100000,B10100000,B10100000,B11000000}
-                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B11100000,B10000000,B11100000}
-                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B11100000,B10000000,B10000000}
-                                    ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10100000,B10100000,B11100000}
-                                      };
-
-const PROGMEM byte BITMAP_WAVEFORMS[6][8]  = {
-                                    {B00000000,B01100000,B10010000,B10010000,B00001001,B00001001,B00000110,B00000000}
-                                    , {B00000000,B10000011,B10000101,B10001001,B10010001,B10100001,B11000001,B00000000}
-                                    , {B00000000,B11000001,B10100001,B10010001,B10001001,B10000101,B10000011,B00000000}
-                                    , {B00000000,B11110000,B10010000,B10010000,B10010001,B00010001,B00011111,B00000000}
-                                    , {B00000000,B10010001,B00001000,B00100010,B10000100,B00010001,B01000100,B00000000}
-                                    , {B00000000,B00000000,B00000000,B11111111,B00000000,B00000000,B00000000,B00000000}
-
-                                    };
-
-const PROGMEM byte BITMAP_FMMODE[4][8]  = {
-                                    {B00000011,B00000010,B00001110,B00001000,B00111000,B00100000,B11100000,B10000000}
-                                    ,{B00000001,B00000010,B00000100,B00001000,B00010000,B00100000,B01000000,B10000000}
-                                    ,{B00000000,B00000000,B00000000,B00000001,B00000110,B00011000,B01100000,B10000000}
-                                    ,{B00000000,B00000000,B00000000,B11111111,B00000000,B00000000,B00000000,B00000000}
-                                    };
 
 byte firstTimeStart = true;
 byte iTrigger = 1;      
@@ -142,26 +111,41 @@ int iCurrentAnalogValue[MAX_ANALOG_INPUTS] = {0,0,0,0,0,0,0,0};
 
 // save space for digital inputs - use a bit rather than a byte per button 
 uint8_t bitsLastButton;
+
+// save space for digital inputs - use a bit rather than a byte per button 
 uint8_t bitsCurrentButton;
+
+// save space for param lock flags - use a bit rather than a byte per param 
 uint8_t bitsLastParamLock;
 
 // time since the last updateAudio()
 uint32_t lastUpdateMicros;
 
-
-
-byte updateCounter = 0;
-
+// used to divide the calls to updateControl to spread out control reads and save cpu cycles 
+uint8_t updateCounter = 0;
 
 
 
 
+// voice 1 instance
 MutatingFM          voice0;
+
+// voice 2 instance
 MutatingFM          voice1;
-MutatingFM*         voices[2];  // array to hold the voices to simplfy the code (but makes it less efficient)
+
+// array of pointers to the MutatingFM instances to simplfy the code
+MutatingFM*         voices[2];  
+
+// MAX7219 display matrix interface class
 LedMatrix           ledDisplay;
+
+// timer to pull sync output low at end of pulse
 EventDelay          syncOutputTimer;
+
+// timer to prevent update of the display while a settings icon is being displayed
 EventDelay          settingDisplayTimer;
+
+// the sequencer
 MutatingSequencerMultiTrack sequencer;
 
 
@@ -196,7 +180,7 @@ void setup()
 
 /*----------------------------------------------------------------------------------------------------------
  * debugPrintMemoryUsage
- * does nothing
+ * does nothing now.  used while optimising memory usage 
  *----------------------------------------------------------------------------------------------------------
  */
 void debugPrintMemoryUsage()
@@ -222,7 +206,7 @@ void initialiseDisplay()
 
   
   // display logo
-  for (uint8_t i=10; i< 100; i+=10)
+  for (uint8_t i = 10; i < 100; i += 10)
   {
     ledDisplay.clearScreen();
     delay(i);
@@ -230,15 +214,16 @@ void initialiseDisplay()
     delay(i);
   }
   
-  for(int i = 15; i>= 0; i--)
+  //fade logo to target intensity
+  for(int i = 15; i>= DISPLAY_SETTING_INTENSITY; i--)
   {
     ledDisplay.setIntensity(i);
 
     delay(20);
   }
   
-  ledDisplay.setIntensity(4);
-  displaySettingIcon(BITMAP_MEEBLEEPS);
+//  ledDisplay.setIntensity(DISPLAY_SETTING_INTENSITY);
+//  displaySettingIcon(BITMAP_MEEBLEEPS);
 
   #ifndef ENABLE_MIDI_OUTPUT
   Serial.println(F("initialiseDisplay() complete"));
@@ -633,6 +618,8 @@ inline void setParameterLock(int8_t paramChannel, uint16_t value)
 /*----------------------------------------------------------------------------------------------------------
  * getParameterLockChannel
  * returns the sequencer modulation channel for a given analog control index 
+ * 
+ * These are a bit of a kludge - would be better as a lookup table.
  *----------------------------------------------------------------------------------------------------------
  */
 inline int8_t getParameterLockChannel(uint8_t analogControlIndex)
@@ -857,9 +844,9 @@ void updateButtonControls()
         {
           if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
           {
-            // if user if holding down FUNC & REC when they hit VOICE, then change LFO mode
-            voices[controlSynthVoice]->toggleLFOWaveform();
-            displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getLFOWaveform()]);
+            // if user if holding down FUNC & REC when they hit VOICE, then change the waveform type for the current voice carrier
+            voices[controlSynthVoice]->toggleCarrierWaveform();
+            displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getCarrierWaveform()]);
           }
           else
           {
@@ -881,8 +868,17 @@ void updateButtonControls()
         startStopSequencer();     
         break;
       case INTERFACE_MODE_SHIFT:    
-        // send tap tempo message to the sequencer
-        sequencer.syncPulse(SYNC_STEPS_PER_TAP);  
+        if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
+        {
+          // if user if holding down FUNC & REC when they hit START, then change the waveform type for the current voice MODULATOR
+          voices[controlSynthVoice]->toggleModulatorWaveform();
+          displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getModulatorWaveform()]);
+        }
+        else
+        {
+          // send tap tempo message to the sequencer
+          sequencer.syncPulse(SYNC_STEPS_PER_TAP);  
+        }
         break;
     }
   }
@@ -922,9 +918,9 @@ void updateButtonControls()
       case INTERFACE_MODE_SHIFT:    
         if (getCurrentButtonState(BUTTON_INPUT_REC) == HIGH)
         {
-          // TODO: if user if holding down FUNC & REC when they hit SCALES, then change the waveform type for the current voice carrier
-          voices[controlSynthVoice]->toggleCarrierWaveform();
-          displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getCarrierWaveform()]);
+          // if user if holding down FUNC & REC when they hit SCALE, then change LFO mode
+          voices[controlSynthVoice]->toggleLFOWaveform();
+          displaySettingIcon(BITMAP_WAVEFORMS[voices[controlSynthVoice]->getLFOWaveform()]);
 
         }
         else

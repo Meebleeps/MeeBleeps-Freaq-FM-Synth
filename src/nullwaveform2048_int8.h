@@ -1,7 +1,7 @@
 /*
   NULLWAVEFORM2018_int8.h - defines a table representing a zero waveform
 
-  used to silence the carrier 
+  used to silence the oscillator 
     
   can be replaced with any values you like, but must be 2048 cells to match the other tables
 */

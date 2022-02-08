@@ -1,7 +1,7 @@
 /*
   pseudorandom2048_int8.h - defines a table to semi-random values with a slight smoothing between them
 
-  used for the LFO to replace the saw/ramp/
+  used for the LFO/carrier/modulator 
 
   can be replaced with any values you like, but must be 2048 cells to match the other tables
 */

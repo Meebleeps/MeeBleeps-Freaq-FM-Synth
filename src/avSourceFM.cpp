@@ -1,4 +1,18 @@
-
+/*----------------------------------------------------------------------------------------------------------
+ * avSourceFM.cpp
+ * 
+ * Implements a 2-operator FM voice with
+ *    Attack-Release envelope for modulation level
+ *    multiple carrier and modulator waveforms
+ *    LFO for modulation level with multi-waveform 
+ *    multiple FM ratio modes (quantised, high/low linear and fixed)
+ * 
+ * Source Code Repository:  https://github.com/Meebleeps/MeeBleeps-Freaq-FM-Synth
+ * Youtube Channel:         https://www.youtube.com/channel/UC4I1ExnOpH_GjNtm7ZdWeWA
+ * 
+ * (C) 2021-2022 Meebleeps
+*-----------------------------------------------------------------------------------------------------------
+*/
 #include <MozziGuts.h>
 #include <mozzi_midi.h>
 #include <mozzi_rand.h>
@@ -521,6 +535,64 @@ uint8_t MutatingFM::getCarrierWaveform()
 
 
 
+
+/*----------------------------------------------------------------------------------------------------------
+ * toggleCarrierWaveform
+ * Sets the carrier waveform 
+ * 
+ * set to WAVEFORM_NULL to switch the carrier off
+ *----------------------------------------------------------------------------------------------------------
+ */
+void MutatingFM::toggleModulatorWaveform()
+{
+  modulatorWaveform = (modulatorWaveform + 1) % MAX_MODULATOR_WAVEFORMS;
+  
+  switch (modulatorWaveform)
+  {
+    case WAVEFORM_SIN: 
+      modulator->setTable(SIN2048_DATA);
+      break;
+
+    case WAVEFORM_SAW: 
+      modulator->setTable(SAW2048_DATA);
+      break;
+
+    case WAVEFORM_REVSAW: 
+      modulator->setTable(REVSAW2048_DATA);
+      break;
+
+    case WAVEFORM_SQUARE: 
+      modulator->setTable(SQUARE2048_DATA);
+      break;
+
+    case WAVEFORM_PSEUDORANDOM: 
+      modulator->setTable(PSEUDORANDOM2048_DATA);
+      break;
+
+    case WAVEFORM_NULL: 
+      modulator->setTable(NULLWAVEFORM2048_DATA);
+      break;
+
+    default:
+      modulator->setTable(SIN2048_DATA);
+  }
+}
+
+
+/*----------------------------------------------------------------------------------------------------------
+ * getModulatorWaveform
+ * Gets the Modulator waveform 
+ *----------------------------------------------------------------------------------------------------------
+ */
+uint8_t MutatingFM::getModulatorWaveform()
+{
+  return modulatorWaveform;
+}
+
+
+
+
+
 /*----------------------------------------------------------------------------------------------------------
  * toggleLFOWaveform
  * Sets the LFO waveform 
@@ -571,6 +643,7 @@ uint8_t MutatingFM::getLFOWaveform()
 {
   return lfoWaveform;
 }
+
 
 
 /*----------------------------------------------------------------------------------------------------------

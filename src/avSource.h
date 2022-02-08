@@ -54,6 +54,7 @@
 #define MAX_FM_MODES        4
 #define MAX_LFO_WAVEFORMS     6
 #define MAX_CARRIER_WAVEFORMS 6
+#define MAX_MODULATOR_WAVEFORMS 6
 
 #define WAVEFORM_SIN          0
 #define WAVEFORM_SAW          1
@@ -130,6 +131,9 @@ class MutatingFM : public MutatingSource
     void toggleCarrierWaveform();
     uint8_t getCarrierWaveform();
 
+    void toggleModulatorWaveform();
+    uint8_t getModulatorWaveform();
+
   protected:
     
     // for FM oscillator
@@ -146,6 +150,7 @@ class MutatingFM : public MutatingSource
     uint8_t fmMode;
     uint8_t lfoWaveform;
     uint8_t carrierWaveform;
+    uint8_t modulatorWaveform;
 
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* carrier;
     Oscil<SIN2048_NUM_CELLS, AUDIO_RATE>* modulator;

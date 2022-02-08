@@ -1,3 +1,14 @@
+/*----------------------------------------------------------------------------------------------------------
+ * LedMatrix.cpp
+ * 
+ * Implements an interface to a MAX7219 driving an 8x8 LED matrix
+ * 
+ * Source Code Repository:  https://github.com/Meebleeps/MeeBleeps-Freaq-FM-Synth
+ * Youtube Channel:         https://www.youtube.com/channel/UC4I1ExnOpH_GjNtm7ZdWeWA
+ * 
+ * (C) 2021-2022 Meebleeps
+*-----------------------------------------------------------------------------------------------------------
+*/
 #include "LedMatrix.h"
 #include <SPI.h>
 #include <mozzi_rand.h>

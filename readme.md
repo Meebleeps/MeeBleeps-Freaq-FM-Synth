@@ -1,11 +1,17 @@
 # Meebleeps Freaq FM Synth
 ## Arduino Synth with Dual-voice 2-OP FM | Generative 2-track Polymetric Sequencer | Mozzi SDK
 
-My second Arduino project is an evolution of my first Mozzi synth build, with dual 2-op FM voices running on a 2-track generative polymetric sequencer built to sync & fit with a  Volca collection.
+My second Arduino project is an evolution of the first Mozzi synth build, with dual 2-op FM voices running on a 2-track generative polymetric sequencer built to sync & fit with a  Volca collection.
 
-Started simple but ended up cramming the 32K Flash to the brim with features and wavetables, and maxxed out the interface with obscure button combinations, but it makes lots of funky noises now!
+Started simple but ended up cramming the 32K Flash to the brim with features and wavetables, maxxing out the interface with obscure button combinations, and pushing the 16Mhz Arduino nano to the edge!  
 
-Source released under Creative Commons ttribution-NonCommercial-ShareAlike 4.0
+Upside is it makes lots of funky noises now!
+
+ #### Source Code:      https://github.com/Meebleeps/MeeBleeps-Freaq-FM-Synth
+ #### Youtube Channel:  https://www.youtube.com/channel/UC4I1ExnOpH_GjNtm7ZdWeWA
+
+Source released under Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+Copyright (C) 2022 Meebleeps
 
 ***
 
@@ -14,9 +20,9 @@ Source released under Creative Commons ttribution-NonCommercial-ShareAlike 4.0
 -   2 independent FM voices
 -   2-operator FM (for old-school prince of persia vibes! 😂)
 -   Multi-mode FM ratios - quantised, free-multiple, independent
--   Multiple carrier waveforms - Sine, Saw, Reverse Saw, Square, Noise
--   Modulation depth controlled by Envelope (attack-release) and LFO per voice
--   Multiple LFO waveforms (using same tables as the carrier oscillators) Sine, Saw, Reverse Saw, Square, Noise
+-   Multiple operator waveforms for carrier & modulator - Sine, Saw, Reverse Saw, Square, Noise, Off
+-   Modulation level controlled by Attack/Decay envelope and LFO per-voice
+-   Multiple LFO waveforms (same tables as the carrier oscillators) Sine, Saw, Reverse Saw, Square, Noise
 
 ## Sequencer
 
@@ -26,7 +32,7 @@ Source released under Creative Commons ttribution-NonCommercial-ShareAlike 4.0
 -   Selectable tonic, octave & scale quantisation (Major, Minor, Pentatonic, Phrygian (GOA!), Octaves, Fifths)
 -   Tap-tempo control
 -   Sync input & output (Korg Volca compatible) 
--   16-step parameter-lock recording of synth parameters (the Elektron way!)
+-   16-step parameter-lock recording of synth parameters for track 1 (the Elektron way!)
 
 ## Hardware 
 -   Arduino Nano (Elegoo) 
@@ -47,15 +53,16 @@ Source released under Creative Commons ttribution-NonCommercial-ShareAlike 4.0
     -   [Func][Rec] + Tonic - Select octave offset to Track 1 (track 1 & 2 can be 0-4 octaves apart)
 -   Scales - Select current musical scale
     -   [Func] + Scales - Select current generative algorithm
-    -   [Func][Rec] + Scales - Select Carrier Waveform for the current voice 
+    -   [Func][Rec] + Scales - Select the LFO waveform for the current voice 
 -   Rec + knob - Hold down while moving a knob to record those parameters to the sequence 
     -   [Func][Rec] + knob - Hold down while moving a knob to delete the recorded sequence for that parameter 
     -   [Func][Rec] + buttons - Access various secondary functions
 -   Start - Start or stop the sequencer
     -   [Func] + Start - Tap tempo
+    -   [Func][Rec] + Start - Select the MODULATOR waveform for the current voice 
 -   Voice - Select the active track which can be edited using the parameter inputs
     -   [Func] + Voice - Select the FM ratio mode for the current voice
-    -   [Func][Rec] + Voice - Select the LFO waveform for the current voice 
+    -   [Func][Rec] + Voice - Select CARRIER Waveform for the current voice 
 
 ### Rotary Inputs
 

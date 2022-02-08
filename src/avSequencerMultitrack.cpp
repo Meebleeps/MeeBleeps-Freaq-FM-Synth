@@ -106,20 +106,24 @@ byte MutatingSequencerMultiTrack::getCurrentNote()
  */
 byte MutatingSequencerMultiTrack::getCurrentNote(byte track)
 {
+  byte theNote;
+ 
   if (!retrigState)
   {
-    if (track != 0 || octaveOffsetTrack1 == 0)
-    {
-      return notes[currentTrackStep[track]];
-    }
-    else
-    {
-      return notes[currentTrackStep[track]] + (12*octaveOffsetTrack1);
-    }
+    theNote = notes[currentTrackStep[track]];
   }
   else
   {
-    return notes[retrigStep];
+    theNote = notes[retrigStep];
+  }
+ 
+  if (theNote == 0 || track != 0 || octaveOffsetTrack1 == 0)
+  {
+    return theNote;
+  }
+  else
+  {
+    return theNote + (12*octaveOffsetTrack1);
   }
 }
 
