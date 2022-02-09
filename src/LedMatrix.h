@@ -8,7 +8,9 @@
  * 
  * (C) 2021-2022 Meebleeps
 *-----------------------------------------------------------------------------------------------------------
-*/#ifndef ledMatrix_h
+*/
+
+#ifndef ledMatrix_h
 #define ledMatrix_h
 #include "Arduino.h"
 

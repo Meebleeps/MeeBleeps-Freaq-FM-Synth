@@ -1,13 +1,17 @@
 # Meebleeps Freaq FM Synth
 ## Arduino Synth with Dual-voice 2-OP FM | Generative 2-track Polymetric Sequencer | Mozzi SDK
 
-My second Arduino project is an evolution of the first Mozzi synth build, with dual 2-op FM voices running on a 2-track generative polymetric sequencer built to sync & fit with a  Volca collection.
+An evolution of my first Mozzi synth build, this one features dual independent 2-operator FM voices paired with a 2-track generative sequencer.  
 
-Started simple but ended up cramming the 32K Flash to the brim with features and wavetables, maxxing out the interface with obscure button combinations, and pushing the 16Mhz Arduino nano to the edge!  
+Each voice has independent carrier & modulator waveforms, FM ratio, modulation envelope & LFO.
 
-Upside is it makes lots of funky noises now!
+Both tracks share the a single pattern (inspired by the Intellijel Metropolix) and can be stacked in unison or have different polymetric step-counts.  Track 1 can be offset 0-3 octaves above track 2 for separate bass & lead.
+
+It started simple... but ended up cramming the 32K flash to the brim with features and wavetables, maxxing out the interface with obscure button combinations, and pushing the 16Mhz Arduino Nano to the edge!  Upside is it makes lots of funky noises now!
+
 
  #### Source Code:      https://github.com/Meebleeps/MeeBleeps-Freaq-FM-Synth
+ #### Youtube Demo:     https://www.youtube.com/watch?v=KD6IrcmMkoA
  #### Youtube Channel:  https://www.youtube.com/channel/UC4I1ExnOpH_GjNtm7ZdWeWA
 
 Source released under Creative Commons Attribution-NonCommercial-ShareAlike 4.0
