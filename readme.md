@@ -18,6 +18,8 @@ Source released under Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 Copyright (C) 2022 Meebleeps
 
 ***
+__Important build-note:__ my builds have used normally-closed switches, so the code assumes this.  A couple of people building this have had issues because they have normally-open switches, so to adjust for this edit the code in updateButtonControls() to invert the results of each call to digitalRead(). 
+***
 
 ## Voices
 
