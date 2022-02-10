@@ -779,12 +779,27 @@ inline void setCurrentButtonState(uint8_t buttonIndex, uint8_t value)
  */
 void updateButtonControls()
 {
+  //  IMPORTANT:
+  //  These calls assume you are using NORMALLY CLOSED switches, which is what I used in the build
+  //  if your switches are NORMALLY OPEN delete the definition of SWITCH_TYPE_NORMALLY_CLOSED
+  #define SWITCH_TYPE_NORMALLY_CLOSED
+
+  #ifdef SWITCH_TYPE_NORMALLY_CLOSED
   setCurrentButtonState(0,digitalRead(PIN_BUTTON0));
   setCurrentButtonState(1,digitalRead(PIN_BUTTON1));
   setCurrentButtonState(2,digitalRead(PIN_BUTTON2));
   setCurrentButtonState(3,digitalRead(PIN_BUTTON3));
   setCurrentButtonState(4,digitalRead(PIN_BUTTON4));
   setCurrentButtonState(5,digitalRead(PIN_BUTTON5));
+  #else
+  setCurrentButtonState(0, !digitalRead(PIN_BUTTON0));
+  setCurrentButtonState(1, !digitalRead(PIN_BUTTON1));
+  setCurrentButtonState(2, !digitalRead(PIN_BUTTON2));
+  setCurrentButtonState(3, !digitalRead(PIN_BUTTON3));
+  setCurrentButtonState(4, !digitalRead(PIN_BUTTON4));
+  setCurrentButtonState(5, !digitalRead(PIN_BUTTON5));
+  #endif
+
 
   // if func button is not pressed, all UI controls are normal
   if (getCurrentButtonState(BUTTON_INPUT_FUNC)  != getLastButtonState(BUTTON_INPUT_FUNC))
