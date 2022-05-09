@@ -92,6 +92,25 @@ __Important build-notes:__ If you have issues with the binary size being too big
 
 -   Fair bit of jitter in the sequencer timing when tracking external sync due to somewhat naive approach to the 2-step-per-pulse volca sync 
 -   Mozzi audio library has 10ms buffer 
+-   The code is written for NORMALLY CLOSED switches - see latest updates in MutantFMSynth.ino updateButtonControls() for support for NORMALLY OPEN
+-   The code doesn't fit in the Arduino Nano when compiled using the Arduino IDE
+
+### Compiling on the Arduino IDE
+
+A few people have let me know the compiled code doesn't fit into the Arduino Nano when compiled using the Arduino IDE.  This is probably because different compilers optimise in different ways and I have been using the Visual Studio Code + PlatformIO environment, and it *just* fits. 😬
+
+Easiest options to get it to fit are:
+-   migrate to VSCode & PlatformIO (it takes a little bit of setting up but it is a much better IDE) 
+or
+-   delete one of the wavetables.  The wavetables are all 2KB each, so removing one of them will let the code fit without a problem.  From my experience playing with the synth, the least useful is the ramp :) 
+-   to remove a wavetable:
+  -   in avSource.h: delete the relevant #include in avSource.h
+  -   decrease all #define MAX_WAVEFORMS from 6 to 5, 
+  -   amend the definitions of #define WAVEFORM to delete the reference to the wavetable you removed.
+  -   in mutantBitmaps.h delete the corresponding bitmap from const PROGMEM byte BITMAP_WAVEFORMS[6][8] and change the defintion from [6][8] to [5][8].
+
+When I get some time I will code a fix so it compiles on both without issues. 
+
 
 ## Thanks
 
