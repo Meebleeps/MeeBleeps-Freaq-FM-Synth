@@ -7,16 +7,23 @@
 #ifndef avSource_h
 #define avSource_h
 #include "Arduino.h"
-#include "PDResonant.h"
+
 #include "avMidi.h"
-#include <EventDelay.h>
+#include "MutantFMSynthOptions.h"
+
 #include <MozziGuts.h>
+#include <EventDelay.h>
 #include <Oscil.h>
 #include <tables/sin2048_int8.h> // sine table for oscillators & LFO
 #include <tables/saw2048_int8.h> // saw table for LFO
 #include "revsaw2048_int8.h" // reverse saw table for LFO
 #include "square2048_int8.h" // square table for LFO
+
+/** @brief if COMPILE_SMALLER_BINARY flag is defined, omit the pseudorandom waveform */
+#ifndef COMPILE_SMALLER_BINARY
 #include "pseudorandom2048_int8.h" // noise table for LFO
+#endif
+
 #include "nullwaveform2048_int8.h" // zero table for LFO - used to turn carrier off
 #include <mozzi_fixmath.h>
 #include <ADSR.h>
@@ -52,16 +59,32 @@
 #define FM_MODE_LINEAR_LOW  2
 #define FM_MODE_FREE        3
 #define MAX_FM_MODES        4
-#define MAX_LFO_WAVEFORMS     6
-#define MAX_CARRIER_WAVEFORMS 6
-#define MAX_MODULATOR_WAVEFORMS 6
 
-#define WAVEFORM_SIN          0
-#define WAVEFORM_SAW          1
-#define WAVEFORM_REVSAW       2
-#define WAVEFORM_SQUARE       3
-#define WAVEFORM_PSEUDORANDOM 4
-#define WAVEFORM_NULL         5
+/** @brief if COMPILE_SMALLER_BINARY flag is defined, omit the pseudorandom waveform */
+#ifdef COMPILE_SMALLER_BINARY
+
+  #define MAX_LFO_WAVEFORMS       5
+  #define MAX_CARRIER_WAVEFORMS   5
+  #define MAX_MODULATOR_WAVEFORMS 5
+
+  #define WAVEFORM_SIN          0
+  #define WAVEFORM_SAW          1
+  #define WAVEFORM_REVSAW       2
+  #define WAVEFORM_SQUARE       3
+  #define WAVEFORM_NULL         4
+
+#else
+  #define MAX_LFO_WAVEFORMS       6
+  #define MAX_CARRIER_WAVEFORMS   6
+  #define MAX_MODULATOR_WAVEFORMS 6
+
+  #define WAVEFORM_SIN          0
+  #define WAVEFORM_SAW          1
+  #define WAVEFORM_REVSAW       2
+  #define WAVEFORM_SQUARE       3
+  #define WAVEFORM_PSEUDORANDOM 4
+  #define WAVEFORM_NULL         5
+#endif
 
 
 // increase for wider LFO depth range

@@ -18,7 +18,11 @@ Source released under Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 Copyright (C) 2022 Meebleeps
 
 ***
-__Important build-note:__ my builds have used normally-closed switches, so the code assumes this.  A couple of people building this have had issues because they have normally-open switches, so to adjust for this edit the code in updateButtonControls() to invert the results of each call to digitalRead(). 
+__Important build-notes:__ my builds have used normally-closed switches, so the code assumes this.  09 May 2022: Added complier switches to handle normally-open switches
+__Important build-notes:__ If you have issues with the binary size being too big for the arduino, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 09 May 2022: Added complier switches to reduce waveforms by 1 and save 2KB
+
+-   See complile options in MutantFMSynthOptions.h to alter switch type or compile size
+
 ***
 
 ## Voices

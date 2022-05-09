@@ -16,6 +16,8 @@
 #include <avr/pgmspace.h>
 #include <Arduino.h>
 
+#include "MutantFMSynthOptions.h"
+
 const PROGMEM byte BITMAP_MEEBLEEPS[]  = {B00011000,B01111110,B11011011,B11011011,B11011011,B11011011,B11000011,B00000110};
 
 const PROGMEM byte BITMAP_NUMERALS[8][8]  = {
@@ -50,15 +52,22 @@ const PROGMEM byte BITMAP_ALPHA[7][8]  = {
                                     ,{B00000000,B00000000,B00000000,B11100000,B10000000,B10100000,B10100000,B11100000}
                                       };
 
+/** @brief if COMPILE_SMALLER_BINARY flag is defined, omit the definition of the pseudorandom waveform icon */
+#ifdef COMPILE_SMALLER_BINARY
+const PROGMEM byte BITMAP_WAVEFORMS[5][8]  = {
+#else
 const PROGMEM byte BITMAP_WAVEFORMS[6][8]  = {
+#endif
                                     {B00000000,B01100000,B10010000,B10010000,B00001001,B00001001,B00000110,B00000000}
                                     , {B00000000,B10000011,B10000101,B10001001,B10010001,B10100001,B11000001,B00000000}
                                     , {B00000000,B11000001,B10100001,B10010001,B10001001,B10000101,B10000011,B00000000}
                                     , {B00000000,B11110000,B10010000,B10010000,B10010001,B00010001,B00011111,B00000000}
+#ifndef COMPILE_SMALLER_BINARY
                                     , {B00000000,B10010001,B00001000,B00100010,B10000100,B00010001,B01000100,B00000000}
+#endif
                                     , {B00000000,B00000000,B00000000,B11111111,B00000000,B00000000,B00000000,B00000000}
-
                                     };
+
 
 const PROGMEM byte BITMAP_FMMODE[4][8]  = {
                                     {B00000011,B00000010,B00001110,B00001000,B00111000,B00100000,B11100000,B10000000}

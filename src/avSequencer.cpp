@@ -477,7 +477,7 @@ void MutatingSequencer::nextStep(bool restart)
   }
   else
   {
-    currentStep = ++currentStep % sequenceLength;
+    currentStep = (currentStep + 1) % sequenceLength;
     duckingCounter++;
   }
   #ifndef ENABLE_MIDI_OUTPUT

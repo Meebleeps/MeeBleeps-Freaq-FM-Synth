@@ -27,6 +27,7 @@
 #include "mutantBitmaps.h"
 #include <avr/pgmspace.h>
 
+#include "MutantFMSynthOptions.h"
 
 // define the pins
 #define PIN_SYNC_IN       8
@@ -593,6 +594,11 @@ inline void setParameterLock(int8_t paramChannel, uint16_t value)
 {
   switch (motionRecordMode)
   {
+    // 14/02/22: moved this here as is the most common case, assuming no branch prediction on arduion platforms
+    case MOTION_RECORD_NONE:
+        // do nothing 
+        break;
+
     case MOTION_RECORD_REC:
         sequencer.setParameterLock(paramChannel, value);
         #ifndef ENABLE_MIDI_OUTPUT
@@ -607,9 +613,6 @@ inline void setParameterLock(int8_t paramChannel, uint16_t value)
         #endif
         break;
 
-    case MOTION_RECORD_NONE:
-        // do nothing 
-        break;
   }
 }
 
@@ -781,8 +784,7 @@ void updateButtonControls()
 {
   //  IMPORTANT:
   //  These calls assume you are using NORMALLY CLOSED switches, which is what I used in the build
-  //  if your switches are NORMALLY OPEN delete the definition of SWITCH_TYPE_NORMALLY_CLOSED
-  #define SWITCH_TYPE_NORMALLY_CLOSED
+  //  if your switches are NORMALLY OPEN delete the definition of SWITCH_TYPE_NORMALLY_CLOSED in MutantFMSynthOptions.h
 
   #ifdef SWITCH_TYPE_NORMALLY_CLOSED
   setCurrentButtonState(0,digitalRead(PIN_BUTTON0));
@@ -799,7 +801,8 @@ void updateButtonControls()
   setCurrentButtonState(4, !digitalRead(PIN_BUTTON4));
   setCurrentButtonState(5, !digitalRead(PIN_BUTTON5));
   #endif
-
+  
+  // TODO: increase efficiency - only execute this entire block if at least one button is pressed, which is bitsCurrentButton != 0 
 
   // if func button is not pressed, all UI controls are normal
   if (getCurrentButtonState(BUTTON_INPUT_FUNC)  != getLastButtonState(BUTTON_INPUT_FUNC))
@@ -1084,7 +1087,6 @@ inline void updateAnalogControls()
           {
             case INTERFACE_MODE_NORMAL: 
               updateNoteDecay(false);
-              setParameterLock(getParameterLockChannel(ANALOG_INPUT_DECAY), iCurrentAnalogValue[ANALOG_INPUT_DECAY]);
               break;
 
             case INTERFACE_MODE_SHIFT:  
@@ -1094,6 +1096,8 @@ inline void updateAnalogControls()
               voices[controlSynthVoice]->setGain(iCurrentAnalogValue[ANALOG_INPUT_DECAY] >> 2);
 
           }
+          // 14/02/22 - moved this from above switch statement as it meant that decay parameter locks weren't getting cleared
+          setParameterLock(getParameterLockChannel(ANALOG_INPUT_DECAY), iCurrentAnalogValue[ANALOG_INPUT_DECAY]);
           break;
 
         case ANALOG_INPUT_MOD_AMOUNT:

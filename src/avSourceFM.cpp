@@ -22,6 +22,7 @@
 #include <ADSR.h>
 #include <IntMap.h>
 #include "avSource.h"
+#include "MutantFMSynthOptions.h"
 
 //making LFO update rate lower than control rate to save processing.  places upper limit on LFO frequency
 #define LFO_OSCILLATOR_UPDATE_RATE 64
@@ -509,9 +510,12 @@ void MutatingFM::toggleCarrierWaveform()
       carrier->setTable(SQUARE2048_DATA);
       break;
 
+/** @brief if COMPILE_SMALLER_BINARY flag is defined, omit the pseudorandom waveform */
+#ifndef COMPILE_SMALLER_BINARY
     case WAVEFORM_PSEUDORANDOM: 
       carrier->setTable(PSEUDORANDOM2048_DATA);
       break;
+#endif
 
     case WAVEFORM_NULL: 
       carrier->setTable(NULLWAVEFORM2048_DATA);
@@ -565,9 +569,12 @@ void MutatingFM::toggleModulatorWaveform()
       modulator->setTable(SQUARE2048_DATA);
       break;
 
+/** @brief if COMPILE_SMALLER_BINARY flag is defined, omit the pseudorandom waveform */
+#ifndef COMPILE_SMALLER_BINARY
     case WAVEFORM_PSEUDORANDOM: 
       modulator->setTable(PSEUDORANDOM2048_DATA);
       break;
+#endif
 
     case WAVEFORM_NULL: 
       modulator->setTable(NULLWAVEFORM2048_DATA);
@@ -620,10 +627,13 @@ void MutatingFM::toggleLFOWaveform()
       lfo->setTable(SQUARE2048_DATA);
       break;
 
+/** @brief if COMPILE_SMALLER_BINARY flag is defined, omit the pseudorandom waveform */
+#ifndef COMPILE_SMALLER_BINARY
     case WAVEFORM_PSEUDORANDOM: 
       lfo->setTable(PSEUDORANDOM2048_DATA);
       break;    
-      
+#endif
+
     case WAVEFORM_NULL: 
       lfo->setTable(NULLWAVEFORM2048_DATA);
       break;
