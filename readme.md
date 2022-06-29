@@ -18,10 +18,14 @@ Source released under Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 Copyright (C) 2022 Meebleeps
 
 ***
-__Important build-notes:__ my builds have used normally-closed switches, so the code assumes this.  09 May 2022: Added complier switches to handle normally-open switches
-__Important build-notes:__ If you have issues with the binary size being too big for the arduino, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 09 May 2022: Added complier switches to reduce waveforms by 1 and save 2KB
 
--   See complile options in MutantFMSynthOptions.h to alter switch type or compile size
+## Important build-notes 
+
+- My builds have used normally-closed switches, so the code assumes this.  09 May 2022: Added complier switches to handle normally-open switches
+- If you have issues with the binary size being too big for the arduino, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 09 May 2022: Added complier switches to reduce waveforms by 1 and save 2KB
+- See complile options in MutantFMSynthOptions.h to alter switch type or compile size
+- Do not install the Mozzi library from PlatformIO in VSCode, it's outdated and will not build successfully. Instead, install its [latest git master branch](https://github.com/sensorium/Mozzi) to `lib/mozzi`. 
+- The default settings target the Nano ATmega328 with the new bootloader. If you have avrdude errors during upload, you might have the old bootloader: change both instances of `nanoatmega328new` to `nanoatmega328` in `plaformio.ini`.
 
 ***
 
@@ -46,6 +50,7 @@ __Important build-notes:__ If you have issues with the binary size being too big
 
 ## Hardware 
 -   Arduino Nano (Elegoo) 
+-   8x8 LED display with a MAX7219-based control board
 -   Simple Mozzi output circuit 
 -   Added power filtering caps on DC input and 5V rail
 -   Designed to fit into Volca form factor 
@@ -53,6 +58,28 @@ __Important build-notes:__ If you have issues with the binary size being too big
 -   Laser-cut wooden enclosure 
 -   7V-12DC DC Power input 
 -   Access to nano's USB port for firmware upgrades 
+
+## Pins
+
+These are the defaults defined for the faceplate controls:
+
+| Pin | Function | Name in `MutantFMSynth.ino` |
+|-----|----------|-----------------------------|
+| A0  | Mutation | ANALOG_INPUT_MUTATION 
+| A1  | Wobble   | ANALOG_INPUT_LFO
+| A2  | Population | ANALOG_INPUT_STEPCOUNT
+| A3  | Attack | ANALOG_INPUT_MOD_ENVELOPE2 
+| A4  | Lifespan | ANALOG_INPUT_DECAY
+| A5  | Decay | ANALOG_INPUT_MOD_ENVELOPE1
+| A6  | Ratio | ANALOG_INPUT_MOD_RATIO
+| A7  | Depth | ANALOG_INPUT_MOD_AMOUNT 
+| D3  | Start | BUTTON_INPUT_START
+| D4  | Voice | BUTTON_INPUT_VOICE
+| D5  | Rec | BUTTON_INPUT_REC
+| D6  | Scales | BUTTON_INPUT_SCALE
+| D10 | Func | BUTTON_INPUT_FUNC
+| D12 | Tonic | BUTTON_INPUT_TONIC
+
 
 ## User Guide
 
