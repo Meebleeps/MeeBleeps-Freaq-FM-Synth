@@ -22,8 +22,13 @@ Copyright (C) 2022 Meebleeps
 ## Important build-notes 
 
 - My builds have used normally-closed switches, so the code assumes this.  09 May 2022: Added complier switches to handle normally-open switches
-- If you have issues with the binary size being too big for the arduino, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 09 May 2022: Added complier switches to reduce waveforms by 1 and save 2KB
-- See complile options in MutantFMSynthOptions.h to alter switch type or compile size
+- This will probably compile to Arduino Uno, but it won't work properly without extensive modification as it uses all 8 of the Nano's analog input pins
+- If you have issues with the compiled size not fitting in the Nano, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 
+  - Check the compiler options in **MutantFMSynthOptions.h** to alter switch type or compile size
+  - open the file MutantFMSynthOptions.h
+  - find the line: //#define COMPILE_SMALLER_BINARY
+  - uncomment the line so it looks like this:  #define COMPILE_SMALLER_BINARY
+  - Then compile. It should now easily fit into the Nano.  This omits the semi-random wave tablesbut you probably won't miss it! :)
 - Do not install the Mozzi library from PlatformIO in VSCode, it's outdated and will not build successfully. Instead, install its [latest git master branch](https://github.com/sensorium/Mozzi) to `lib/mozzi`. 
 - The default settings target the Nano ATmega328 with the new bootloader. If you have avrdude errors during upload, you might have the old bootloader: change both instances of `nanoatmega328new` to `nanoatmega328` in `plaformio.ini`.
 
@@ -120,23 +125,21 @@ These are the defaults defined for the faceplate controls:
 -   Fair bit of jitter in the sequencer timing when tracking external sync due to somewhat naive approach to the 2-step-per-pulse volca sync 
 -   Mozzi audio library has 10ms buffer 
 -   The code is written for NORMALLY CLOSED switches - see latest updates in MutantFMSynth.ino updateButtonControls() for support for NORMALLY OPEN
--   The code doesn't fit in the Arduino Nano when compiled using the Arduino IDE
+-   The code may not fit in the Arduino Nano when compiled using the Arduino IDE or using different bootloaders
 
 ### Compiling on the Arduino IDE
 
-A few people have let me know the compiled code doesn't fit into the Arduino Nano when compiled using the Arduino IDE.  This is probably because different compilers optimise in different ways and I have been using the Visual Studio Code + PlatformIO environment, and it *just* fits. 😬
+If you have issues with the compiled size not fitting in the Nano, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 
+- Check the compiler options in **MutantFMSynthOptions.h** to alter switch type or compile size
+- open the file MutantFMSynthOptions.h
+- find the line: //#define COMPILE_SMALLER_BINARY
+- uncomment the line so it looks like this:  #define COMPILE_SMALLER_BINARY
+- Then compile. It should now easily fit into the Nano.  This omits the semi-random wave tablesbut you probably won't miss it! :)
 
-Easiest options to get it to fit are:
--   migrate to VSCode & PlatformIO (it takes a little bit of setting up but it is a much better IDE) 
-or
--   delete one of the wavetables.  The wavetables are all 2KB each, so removing one of them will let the code fit without a problem.  From my experience playing with the synth, the least useful is the ramp :) 
--   to remove a wavetable:
-  -   in avSource.h: delete the relevant #include in avSource.h
-  -   decrease all #define MAX_WAVEFORMS from 6 to 5, 
-  -   amend the definitions of #define WAVEFORM to delete the reference to the wavetable you removed.
-  -   in mutantBitmaps.h delete the corresponding bitmap from const PROGMEM byte BITMAP_WAVEFORMS[6][8] and change the defintion from [6][8] to [5][8].
+### Compiling in VSCode / PlatformIO
 
-When I get some time I will code a fix so it compiles on both without issues. 
+- Do not install the Mozzi library from PlatformIO in VSCode, it's outdated and will not build successfully. Instead, install its [latest git master branch](https://github.com/sensorium/Mozzi) to `lib/mozzi`. 
+- The default settings target the Nano ATmega328 with the new bootloader. If you have avrdude errors during upload, you might have the old bootloader: change both instances of `nanoatmega328new` to `nanoatmega328` in `plaformio.ini`.
 
 
 ## Thanks
