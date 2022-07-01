@@ -26,8 +26,8 @@ Copyright (C) 2022 Meebleeps
 - If you have issues with the compiled size not fitting in the Nano, this may be due to different compiler (I use VSCode & PlatformIO) or different bootloader in the Arduino (not sure which I have, but am compiling to Elegoo brand arduino nano). 
   - Check the compiler options in **MutantFMSynthOptions.h** to alter switch type or compile size
   - open the file MutantFMSynthOptions.h
-  - find the line: //#define COMPILE_SMALLER_BINARY
-  - uncomment the line so it looks like this:  #define COMPILE_SMALLER_BINARY
+  - find the line: `//#define COMPILE_SMALLER_BINARY`
+  - uncomment the line so it looks like this:  `#define COMPILE_SMALLER_BINARY`
   - Then compile. It should now easily fit into the Nano.  This omits the semi-random wave tablesbut you probably won't miss it! :)
 - Do not install the Mozzi library from PlatformIO in VSCode, it's outdated and will not build successfully. Instead, install its [latest git master branch](https://github.com/sensorium/Mozzi) to `lib/mozzi`. 
 - The default settings target the Nano ATmega328 with the new bootloader. If you have avrdude errors during upload, you might have the old bootloader: change both instances of `nanoatmega328new` to `nanoatmega328` in `plaformio.ini`.
