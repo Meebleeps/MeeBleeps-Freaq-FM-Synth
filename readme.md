@@ -1,6 +1,9 @@
 # Meebleeps Freaq FM Synth
 ## Arduino Synth with Dual-voice 2-OP FM | Generative 2-track Polymetric Sequencer | Mozzi SDK
 
+## NOTE This code is an open-source prototype and is not compatible with the retail version of Freaq FM hardware
+
+
 An evolution of my first Mozzi synth build, this one features dual independent 2-operator FM voices paired with a 2-track generative sequencer.  
 
 Each voice has independent carrier & modulator waveforms, FM ratio, modulation envelope & LFO.
