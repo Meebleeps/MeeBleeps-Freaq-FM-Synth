@@ -1,8 +1,8 @@
-# Meebleeps Freaq FM Synth
+# Meebleeps / Wirehead Freaq FM Synth
 ## Arduino Synth with Dual-voice 2-OP FM | Generative 2-track Polymetric Sequencer | Mozzi SDK
 
-## NOTE This code is an open-source prototype and is not compatible with the retail version of Freaq FM hardware
-
+## NOTE This code is an open-source prototype and is not compatible with the Wirehead Instruments version of Freaq FM hardware
+- Meebleeps was my personal project and was rebranded as Wirehead Instruments in 2023 to avoid brand confusion with MeeBlip - another completely separate synth design company.
 
 An evolution of my first Mozzi synth build, this one features dual independent 2-operator FM voices paired with a 2-track generative sequencer.  
 
